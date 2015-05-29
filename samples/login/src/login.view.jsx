@@ -27,3 +27,7 @@ class LoginView extends FluxEasy.View {
   }
 
 }
+
+var component = loginView.constructComponent();
+
+react.Render( <component /> , document.getElementById('app'));

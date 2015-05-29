@@ -1,25 +1,31 @@
 {
-    "name": "flux-easy",
-    "version": "0.0.1",
-    "description": "Transpiler for use flux with simplicity",
-    "main": "fluxeasy.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/tr0l/flux-easy.git"
-    },
-    "keywords": [
+  "name": "flux-easy",
+  "version": "0.0.1",
+  "description": "Transpiler for use flux with simplicity",
+  "bin": "bin/fluxeasy-cli.js",
+  "main": "src/fluxeasy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tr0l/flux-easy.git"
+  },
+  "keywords": [
     "flux",
     "es6",
     "esprima-fb",
-    "react"
+    "ast-types"
   ],
-    "author": "thr0w",
-    "license": "GPL3",
-    "bugs": {
-        "url": "https://github.com/thr0w/flux-easy/issues"
-    },
-    "homepage": "https://github.com/thr0w/flux-easy"
+  "author": "thr0w",
+  "license": "GPL3",
+  "bugs": {
+    "url": "https://github.com/thr0w/flux-easy/issues"
+  },
+  "homepage": "https://github.com/thr0w/flux-easy",
+  "dependencies": {
+    "ast-types": "^0.7.6",
+    "escodegen-jsx": "0.1.0-1.4.2dev",
+    "esprima-fb": "^15001.1.0-dev-harmony-fb"
+  }
 }
