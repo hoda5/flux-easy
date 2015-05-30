@@ -1,12 +1,7 @@
 import loginStore from './login.store';
 
 function LoginView() {
-  type $StateType = {
-    name: string;
-    password: string;
-  }
-
-  var $references, $state: $StateType, $instance, $dispatchToken;
+  var $references, $instance;
 
   return {
     createViewReference: function addViewReference(dispatcher) {
@@ -14,10 +9,6 @@ function LoginView() {
         createViewInstance(dispatcher);
 
       var ref = {
-        getState: function() {
-          return $state;
-        },
-
         releaseViewReference: function releaseViewReference() {
           if ($references.length == 1 && $references[0] == ref)
             destroyViewInstance();
@@ -34,7 +25,9 @@ function LoginView() {
   };
 
   function createViewInstance(dispatcher) {
-    $instance = {
+    $references = [];
+
+    $instance = React.createComponent({
       getInitialState: function getInitialState() {
         var state = {
           name: '',
@@ -45,36 +38,49 @@ function LoginView() {
       },
 
       render: function() {
+        var valueLink_username = {
+              value: this.state.username,
+              requestChange: this.valueLink_username_change
+            },
+            valueLink_password = {
+              value: this.state.password,
+              requestChange: this.valueLink_password_change
+            };
+
         return (
           <div>
               <input type="text" name="username" placeholder="Digite o usuário"
-                       valueLink={$state.state.username} />
+                       valueLink={valueLink_username} />
               <input className={''} type="password" name="password" placeholder="Digite a senha"
-                      valueLink={$state.state.password} />
-              <button onClick={$state.onClick}>Login</button>
+                      valueLink={valueLink_password} />
+              <button onClick={this.onClick}>Login</button>
           </div>
         );
       },
 
       onClick: function() {
-        var user = $state.state.username;
-        var pass = $state.state.password;
+        var user = this.state.username;
+        var pass = this.state.password;
         loginStore.autentication(user, pass);
-        if (loginStore.nome != null)
-          app.show('./welcome');
-      }
-    };
+      },
 
-    $state = $instance.getInitialState();
-    $references = [];
+      valueLink_username_change: function(newValue) {
+        this.setState({
+          username: newValue
+        });
+      },
+
+      valueLink_password_change: function(newValue) {
+        this.setState({
+          password: newValue
+        });
+      }
+    });
   }
 
   function destroyViewInstance(dispatcher) {
     delete $instance;
-    delete $state;
     delete $references;
-    delete $dispatchToken;
-    delete $emitter;
   }
 }
 

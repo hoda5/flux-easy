@@ -47,10 +47,6 @@ function LoginStore() {
                         ret._onLoggedOut.splice(i, 1);
                 },
 
-                getState: function() {
-                    return $state;
-                },
-
                 releaseStoreReference: function releaseStoreReference() {
                     if ($references.length == 1 && $references[0] == ref)
                         destroyStoreInstance();
@@ -58,6 +54,10 @@ function LoginStore() {
                         var i = $references.indexOf(ref);
                         $references.splice(i, 1);
                     }
+                },
+
+                getState: function() {
+                    return $state;
                 },
 
                 dispatchToken: $dispatchTokens,
@@ -90,6 +90,8 @@ function LoginStore() {
     };
 
     function createStoreInstance(dispatcher) {
+        $references = [];
+
         $instance = {
             getInitialState: function getInitialState() {
                 var state = {
@@ -133,7 +135,6 @@ function LoginStore() {
             }
         };
 
-        $references = [];
         $state = $instance.getInitialState();
 
         $dispatchTokens = {
@@ -163,8 +164,8 @@ function LoginStore() {
     function destroyStoreInstance(dispatcher) {
         dispatcher.unregister($dispatchToken);
         delete $instance;
-        delete $state;
         delete $references;
+        delete $state;
         delete $dispatchToken;
         delete $emitter;
     }

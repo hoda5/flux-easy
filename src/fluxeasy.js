@@ -90,7 +90,8 @@ function transform_ast(inputFileName, source_ast) {
             b.variableDeclarator($instance, null),
         ]);
 
-        var processed_instance = processInstance();
+        var processed_instance;
+        processInstance();
 
         class_body = [];
 
@@ -121,10 +122,7 @@ function transform_ast(inputFileName, source_ast) {
         return b.functionDeclaration(clazz.id, [], b.blockStatement(class_body));
 
         function fnCreateInstance() {
-            var body = [
-          b.expressionStatement(b.assignmentExpression('=', $instance, b.objectExpression(processed_instance.get.concat(processed_instance.set)))),
-
-                    b.expressionStatement(b.assignmentExpression('=', $references, b.arrayExpression([])))];
+            var body = [b.expressionStatement(b.assignmentExpression('=', $references, b.arrayExpression([])))];
             if (clazzName == 'Store')
                 fnCreateStore();
             if (clazzName == 'View')
@@ -133,6 +131,11 @@ function transform_ast(inputFileName, source_ast) {
             return b.functionDeclaration(b.identifier('create' + clazzName + 'Instance'), [b.identifier('dispatcher')], b.blockStatement(body));
 
             function fnCreateStore() {
+                body.push(b.expressionStatement(b.assignmentExpression('=', $instance,
+                    b.objectExpression(processed_instance.get
+                        .concat(processed_instance.set)
+                        .concat(processed_instance.internals)))));
+
                 var dispatchTokensReg = b.objectExpression([]);
                 processed_instance.get.forEach(function (prop_method) {
                     if (prop_method.key.name != 'getInitialState') {
@@ -192,23 +195,36 @@ function transform_ast(inputFileName, source_ast) {
                     ])))))
                 );
             }
+
+            function fnCreateView() {
+                var methods = [
+                    ]
+                    .concat(processed_instance.get)
+                    .concat(processed_instance.set)
+                    .concat(processed_instance.internals);
+                body.push(b.expressionStatement(b.assignmentExpression('=', $instance,
+                    b.callExpression(
+                        b.memberExpression(b.identifier('React'), b.identifier('createComponent')), [b.objectExpression(methods)]
+                    ))));
+            }
         }
 
         function fnDestroyInstance() {
             var body = [
             b.expressionStatement(b.unaryExpression('delete', $instance)),
-            b.expressionStatement(b.unaryExpression('delete', $state)),
             b.expressionStatement(b.unaryExpression('delete', $references)),
         ];
-            if (clazzName === 'Store')
+            if (clazzName === 'Store') {
                 body.unshift(
                     b.expressionStatement(
                         b.callExpression(b.memberExpression(b.identifier('dispatcher'), b.identifier('unregister')), [
                 b.identifier('$dispatchToken')])));
-            body.push(
-                b.expressionStatement(b.unaryExpression('delete', b.identifier('$dispatchToken'))),
-                b.expressionStatement(b.unaryExpression('delete', b.identifier('$emitter')))
-            );
+                body.push(
+                    b.expressionStatement(b.unaryExpression('delete', $state)),
+                    b.expressionStatement(b.unaryExpression('delete', b.identifier('$dispatchToken'))),
+                    b.expressionStatement(b.unaryExpression('delete', b.identifier('$emitter')))
+                );
+            }
             return b.functionDeclaration(b.identifier('destroy' + clazzName + 'Instance'), [b.identifier('dispatcher')],
                 b.blockStatement(body));
         }
@@ -217,6 +233,12 @@ function transform_ast(inputFileName, source_ast) {
             var initialStateObj, initialStateFn,
                 _get = [],
                 _set = [];
+
+            processed_instance = {
+                get: _get,
+                set: _set,
+                internals: []
+            };
 
             clazz.body.body.forEach(function (member) {
                 if (n.ClassProperty.check(member)) {
@@ -237,11 +259,7 @@ function transform_ast(inputFileName, source_ast) {
                     }
                 }
             });
-
-            return {
-                get: _get,
-                set: _set
-            };
+            return;
 
             function setInitialState(identifier, typeAnnotation, value) {
                 checkExpected(n.Identifier, identifier)
@@ -310,12 +328,23 @@ function transform_ast(inputFileName, source_ast) {
 
         function processMethod(method) {
             var state_was_changed = false,
-                emit_something = false;
-            recast.visit(method.value.body.body, {
-                visitThisExpression: visitThisExpression
-            });
+                emit_something = false,
+                valueLinkAux = {
+                    declarations: null
+                };
+            var visits;
+            if (transpilingStore)
+                visits = {
+                    visitThisExpression: visitThisExpressionForStore,
+                };
+            if (transpilingView) {
+                visits = {};
+                if (method.key.name == 'render')
+                    visits.visitJSXAttribute = visitJSXAttribute;
+            }
+            recast.visit(method.value.body.body, visits);
 
-            if (state_was_changed && !emit_something && method.key.name != 'constructor')
+            if (transpilingStore && state_was_changed && !emit_something && method.key.name != 'constructor')
                 throwError(method, "method %0 changed state then it must emit some event", method.key.name);
 
             //        if (state_was_changed) {
@@ -324,7 +353,7 @@ function transform_ast(inputFileName, source_ast) {
             //        }
             return state_was_changed;
 
-            function visitThisExpression(path) {
+            function visitThisExpressionForStore(path) {
 
                 var p = path.parentPath;
                 var parent_node = p.node;
@@ -343,7 +372,8 @@ function transform_ast(inputFileName, source_ast) {
                     if (last_node.property.name == 'emit')
                         processEmit();
                 } else {
-                    path.replace($state);
+                    if (transpilingStore)
+                        path.replace($state);
                 }
 
                 this.traverse(path);
@@ -429,16 +459,75 @@ function transform_ast(inputFileName, source_ast) {
                 }
 
             }
+
+            function visitJSXAttribute(path) {
+                var node = path.node;
+                if (n.JSXIdentifier.check(node.name) &&
+                    n.JSXExpressionContainer.check(node.value) &&
+                    node.name.name == 'valueLink') {
+                    var fnname = [];
+                    var v = node.value.expression;
+                    var m1, m2;
+                    while (v) {
+                        if (n.Identifier.check(v) && /^valueLink_/.test(v.name)) {
+                            v = null;
+                            fnname = null;
+                        } else if (n.MemberExpression.check(v)) {
+                            if (!n.ThisExpression.check(v.object) || v.property.name != 'state') {
+                                fnname.unshift(v.property.name);
+                                m2 = v.property;
+                                m1 = m2;
+                            }
+                            v = v.object;
+                        } else if (n.ThisExpression.check(v)) {
+                            v = null;
+                        } else throwError(node.value, 'Invalid value');
+                    }
+                    if (fnname != null) {
+                        fnname = 'valueLink_' + fnname.join('_');
+                        var expr = path.get('value').get('expression');
+                        if (!valueLinkAux[fnname]) {
+                            var decl = b.variableDeclarator(b.identifier(fnname), b.objectExpression(
+                                [
+                                    b.property('init', b.identifier('value'), node.value.expression),
+                                    b.property('init', b.identifier('requestChange'),
+                                        b.memberExpression(b.thisExpression(), b.identifier(fnname + '_change')))
+                                ]
+                            ));
+                            if (valueLinkAux.declarations)
+                                valueLinkAux.declarations.push(decl);
+                            else {
+                                valueLinkAux.declarations = [decl];
+                                method.value.body.body.unshift(
+                                    b.variableDeclaration('var', valueLinkAux.declarations));
+                            }
+
+                            if (!n.Identifier.check(m2))
+                                throwError(m2, "TODO: valueLink with complex objects");
+                            processed_instance.internals.push(b.property('init', b.identifier(fnname + '_change'),
+                                b.functionExpression(null, [b.identifier('newValue')], b.blockStatement([
+b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.identifier('setState')), [b.objectExpression([
+                                           b.property('init', m2, b.identifier('newValue'))
+                                       ])]))
+                                            ]))
+                            ));
+                            valueLinkAux[fnname] = true;
+                        }
+                        expr.replace(b.identifier(fnname));
+                    }
+                }
+                this.traverse(path);
+            }
         }
 
         function fnCreateReference() {
             refobject.properties.push(
-                b.property('init', b.identifier('getState'), b.functionExpression(null, [], b.blockStatement(
-                      [b.returnStatement($state)]))),
                 b.property('init', b.identifier('release' + clazzName + 'Reference'), fnReleaseRef())
             );
             if (transpilingStore)
                 refobject.properties.push(
+                    b.property('init', b.identifier('getState'), b.functionExpression(null, [], b.blockStatement(
+                      [b.returnStatement($state)]))),
                     b.property('init', b.identifier('dispatchToken'), $dispatchTokens));
 
             var body = [

@@ -27,10 +27,7 @@ class LoginView extends FluxEasy.View {
     var user = this.state.username;
     var pass = this.state.password;
     loginStore.autentication(user, pass);
-    if (loginStore.nome != null)
-      app.show('./welcome');
   }
-
 }
 
 var component = loginView.constructComponent();
