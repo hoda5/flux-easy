@@ -1,11 +1,9 @@
-type EventType = () => void;
-
 function LoginStore() {
     type $StateType = {logged_user: string}
     var $references, $state: $StateType, $instance, $dispatchToken;
 
     return {
-        addStoreReference: function addStoreReference(dispatcher) {
+        createStoreReference: function addStoreReference(dispatcher) {
             if ($references.length == 0)
                 createStoreInstance(dispatcher);
 

@@ -1,5 +1,3 @@
-type EventType = () => void;
-
 import FluxEasy from 'flux-easy';
 
 class LoginStore extends FluxEasy.Store {
