@@ -1,7 +1,5 @@
 function LoginStore() {
-    type $StateType = {
-        logged_user: string
-    }
+    type $StateType = {logged_user: string}
     var $references, $state: $StateType, $instance, $dispatchToken;
 
     return {
@@ -10,7 +8,7 @@ function LoginStore() {
                 createStoreInstance(dispatcher);
 
             var ref = {
-                getState: function () {
+                getState: function() {
                     return $state;
                 },
 
@@ -23,6 +21,9 @@ function LoginStore() {
                     }
                 },
 
+                onLoggedIn: null,
+                onLoginError: null,
+                onLoggedOut: null,
                 getLoggedUser: $instance.getLoggedUser.bind($instance)
             };
 
@@ -42,34 +43,43 @@ function LoginStore() {
                 return state;
             },
 
-            getLoggedUser: function () {
+            getLoggedUser: function() {
                 return $state.logged_user;
             },
 
-            checkWindowLocationHash: function () {
+            checkWindowLocationHash: function() {
                 if (window.location.hash) {
                     $state.logged_user = window.location.hash;
-                    $references.onLoggedIn.forEach($emitter);;
+                    $references.forEach(function(r) {
+                        $emitter(r.onLoggedIn);
+                    });;
                 }
             },
 
-            login: function (name, password) {
-                if (name == 'fluxeasy' && password == '123')
+            login: function(name, password) {
+                if (name == 'fluxeasy' && password == '123') {
                     $state.logged_user = 'fluxeasy';
-                else throw "wrong login";
-                $onLoggedIn.forEach($emitter);
+                    $references.forEach(function(r) {
+                        $emitter(r.onLoggedIn);
+                    });;
+                } else
+                    $references.forEach(function(r) {
+                        $emitter(r.onLoginError);
+                    });;
             },
 
-            logout: function () {
+            logout: function() {
                 $state.logged_user = null;
-                $event.LoggedOut ');
+                $references.forEach(function(r) {
+                    $emitter(r.onLoggedOut);
+                });;
             }
         };
 
         $state = $instance.getInitialState();
         $references = [];
 
-        $dispatchToken = dispatcher.register(function (payload) {
+        $dispatchToken = dispatcher.register(function(payload) {
             var fn = $instance[payload.action];
 
             if (fn)
@@ -78,7 +88,7 @@ function LoginStore() {
 
         if (dispatcher.emitter)
             $emitter = dispatcher.emmiter;
-        else $emitter = function (fn, e) {
+        else $emitter = function(fn, e) {
             fn(e);
         };
     }

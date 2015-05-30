@@ -21,10 +21,11 @@ class LoginStore extends FluxEasy.Store {
     }
 
     login(name, password) {
-        if (name == 'fluxeasy' && password == '123')
+        if (name == 'fluxeasy' && password == '123') {
             this.logged_user = 'fluxeasy';
-        else throw "wrong login";
-        this.emit('LoggedIn')
+            this.emit('LoggedIn')
+        } else
+            this.emit('LoginError')
     }
 
     logout() {

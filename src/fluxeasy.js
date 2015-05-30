@@ -300,15 +300,33 @@ function transform(clazzName, clazz) {
                     assert.ok(call_path.parentPath);
                     var stmt_node = call_path.parentPath.node;
                     assert.ok(n.ExpressionStatement.check(stmt_node));
-                    assert.ok(call_node.arguments.length > 0);
+                    assert.ok(call_node.arguments.length == 1);
                     assert.ok(n.Literal.check(call_node.arguments[0]));
                     assert.ok(typeof call_node.arguments[0].value === 'string');
                     var event_name = call_node.arguments[0].value;
                     var emit = b.expressionStatement(b.callExpression(
-                        b.memberExpression(
-                            b.memberExpression(b.identifier('$references'), b.identifier('on' + event_name)),
-                            b.identifier('forEach')), [b.identifier('$emitter')]));
+                        b.memberExpression(b.identifier('$references'),
+                            b.identifier('forEach')), [
+                            b.functionExpression(null, [b.identifier('r')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                    b.identifier('$emitter'), [
+                                        b.memberExpression(b.identifier('r'), b.identifier('on' + event_name))]
+                                ))
+                            ]))
+                            ]));
                     call_path.replace(emit);
+
+                    var def = true;
+                    for (var i = 0; i < addRef.obj.properties.length; i++)
+                        if (addRef.obj.properties[i].key.name == 'on' + event_name) {
+                            def = false;
+                            break;
+                        }
+                    if (def) {
+                        addRef.obj.properties.push(
+                            b.property('init', b.identifier('on' + event_name), b.literal(null))
+                        );
+                    }
                 }
 
             }
