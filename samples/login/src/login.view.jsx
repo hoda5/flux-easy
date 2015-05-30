@@ -3,8 +3,13 @@ import loginStore from './login.store';
 
 class LoginView extends FluxEasy.View {
 
-  name: string='';
-  password: string='';
+  name: string;
+  password: string;
+
+  constructor(){
+    this.name='';
+    this.password='';
+  }
 
   render() {
     return (

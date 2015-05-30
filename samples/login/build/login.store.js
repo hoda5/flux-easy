@@ -1,6 +1,6 @@
 function LoginStore() {
     type $StateType = {logged_user: string}
-    var $references, $state: $StateType, $instance, $dispatchToken;
+    var $references, $instance, $dispatchTokens, $state: $StateType;
 
     return {
         createStoreReference: function addStoreReference(dispatcher) {
@@ -8,19 +8,6 @@ function LoginStore() {
                 createStoreInstance(dispatcher);
 
             var ref = {
-                getState: function() {
-                    return $state;
-                },
-
-                releaseStoreReference: function releaseStoreReference() {
-                    if ($references.length == 1 && $references[0] == ref)
-                        destroyStoreInstance();
-                    else {
-                        var i = $references.indexOf(ref);
-                        $references.splice(i, 1);
-                    }
-                },
-
                 _onLoggedIn: [],
 
                 addLoggedInListenner: function(listenner) {
@@ -60,10 +47,41 @@ function LoginStore() {
                         ret._onLoggedOut.splice(i, 1);
                 },
 
+                getState: function() {
+                    return $state;
+                },
+
+                releaseStoreReference: function releaseStoreReference() {
+                    if ($references.length == 1 && $references[0] == ref)
+                        destroyStoreInstance();
+                    else {
+                        var i = $references.indexOf(ref);
+                        $references.splice(i, 1);
+                    }
+                },
+
+                dispatchToken: $dispatchTokens,
                 getLoggedUser: $instance.getLoggedUser.bind($instance),
-                checkWindowLocationHash: $instance.checkWindowLocationHash.bind($instance),
-                login: $instance.login.bind($instance),
-                logout: $instance.logout.bind($instance)
+
+                checkWindowLocationHash: function checkWindowLocationHash_dispatch() {
+                    dispatcher.dispatch({
+                        action: "LoginStore_checkWindowLocationHash"
+                    });
+                },
+
+                login: function login_dispatch(name, password) {
+                    dispatcher.dispatch({
+                        action: "LoginStore_login",
+                        arg_name: name,
+                        arg_password: password
+                    });
+                },
+
+                logout: function logout_dispatch() {
+                    dispatcher.dispatch({
+                        action: "LoginStore_logout"
+                    });
+                }
             };
 
             $references.push(ref);
@@ -115,15 +133,25 @@ function LoginStore() {
             }
         };
 
-        $state = $instance.getInitialState();
         $references = [];
+        $state = $instance.getInitialState();
 
-        $dispatchToken = dispatcher.register(function(payload) {
-            var fn = $instance[payload.action];
+        $dispatchTokens = {
+            checkWindowLocationHash: dispatcher.register(function(payload) {
+                if (payload.action === "LoginStore_checkWindowLocationHash")
+                    $instance.checkWindowLocationHash.call($instance);
+            }),
 
-            if (fn)
-                fn.apply($instance, payload.args);
-        });
+            login: dispatcher.register(function(payload) {
+                if (payload.action === "LoginStore_login")
+                    $instance.login.call($instance, payload.arg_name, payload.arg_password);
+            }),
+
+            logout: dispatcher.register(function(payload) {
+                if (payload.action === "LoginStore_logout")
+                    $instance.logout.call($instance);
+            })
+        };
 
         if (dispatcher.emitter)
             $emitter = dispatcher.emmiter;

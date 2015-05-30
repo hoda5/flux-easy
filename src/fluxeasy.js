@@ -34,6 +34,7 @@ function transform_string(inputFileName, sourceCode, options) {
 function transform_ast(inputFileName, source_ast) {
 
     var FluxEasySpecifier;
+
     recast.visit(source_ast, {
         visitImportDeclaration: function (path) {
             var src = path.node.source;
@@ -58,9 +59,9 @@ function transform_ast(inputFileName, source_ast) {
                     n.Identifier.check(superClazz.property) &&
                     superClazz.object.name == FluxEasySpecifier) {
                     if (['Store', 'View'].indexOf(superClazz.property.name) >= 0) {
-                        path.replace(transform(superClazz.property.name, clazz));
+                        path.replace(transpile(superClazz.property.name, clazz));
                         return false;
-                    }
+                    } else throwError(superClazz.object.name, 'FluxEasy just do Store or View transformation')
                 }
             }
             this.traverse(path);
@@ -68,80 +69,118 @@ function transform_ast(inputFileName, source_ast) {
     });
     return source_ast;
 
-    function transform(clazzName, clazz) {
+    function transpile(clazzName, clazz) {
 
-        var addRef = fnAddRef();
-        var obj = b.objectExpression([
-        b.property('init', b.identifier('create' + clazzName + 'Reference'), addRef.fn)
+        var transpilingStore = clazzName == 'Store',
+            transpilingView = clazzName == 'View';
 
-        // link.oj b.property('init', b.identifier('AddLoggedInlistenner'), fnDestroy),
-        //b.property('init', b.identifier('RemoveLoggedInlistenner'), fnDestroy),
-    ]);
+        var state_type, event_type,
+            refobject = b.objectExpression([]),
+            $instance = b.identifier('$instance'),
+            $references = b.identifier('$references'),
+            $state, $dispatchTokens;
 
-        var state_type, event_type;
-        var private_vars = b.variableDeclaration('var', [
-            b.variableDeclarator(b.identifier('$references'), null),
-        b.variableDeclarator(b.identifier('$state'), null),
-        b.variableDeclarator(b.identifier('$instance'), null),
-        b.variableDeclarator(b.identifier('$dispatchToken'), null),
-    ]);
-
-        class_body = [
-        private_vars,
-        b.returnStatement(obj),
-        fnCreate(),
-        fnDestroy()
-    ];
-
-        if (event_type)
-            class_body.unshift(event_type);
-
-        if (state_type) {
-            class_body.unshift(state_type);
-            private_vars.declarations[1].id.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(state_type.id, null));
+        if (transpilingStore) {
+            $dispatchTokens = b.identifier('$dispatchTokens');
+            $state = b.identifier('$state');
         }
+
+        var private_vars = b.variableDeclaration('var', [
+            b.variableDeclarator($references, null),
+            b.variableDeclarator($instance, null),
+        ]);
+
+        var processed_instance = processInstance();
+
+        class_body = [];
+
+        if (transpilingStore) {
+            private_vars.declarations.push(
+                b.variableDeclarator($dispatchTokens, null),
+                b.variableDeclarator(b.identifier($state.name), null)
+            );
+
+            if (state_type) {
+                class_body.unshift(state_type);
+                private_vars.declarations[private_vars.declarations.length - 1]
+                    .id.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(state_type.id, null));
+            }
+            if (event_type)
+                class_body.unshift(event_type);
+        }
+
+        class_body.push(
+            private_vars,
+            b.returnStatement(b.objectExpression([
+            b.property('init', b.identifier('create' + clazzName + 'Reference'), fnCreateReference())
+          ])),
+            fnCreateInstance(),
+            fnDestroyInstance()
+        );
 
         return b.functionDeclaration(clazz.id, [], b.blockStatement(class_body));
 
-
-        //        function fnUnlink(fn) {
-        //            return b.functionExpression(b.identifier('createLink'), [b.identifier('dispatcher')], b.blockStatement([
-        //            b.ifStatement(b.unaryExpression('!', b.updateExpression('++', b.identifier('references'), false), true),
-        //                        b.expressionStatement(b.updateExpression('--', b.identifier('references'), false)),
-        //                        b.ifStatement(b.unaryExpression('!', b.identifier('references')),
-        //                            b.expressionStatement(b.callExpression(b.identifier(fnCreate), [b.identifier('dispatcher')]))),
-        //                        b.returnStatement(b.identifier('instance'));
-        //                        ]));
-        //            }
-
-        function fnCreate() {
-            var instance = createInstance();
+        function fnCreateInstance() {
             var body = [
-          b.expressionStatement(b.assignmentExpression('=', b.identifier('$instance'), b.objectExpression(instance.get.concat(instance.set)))),
-                    b.expressionStatement(b.assignmentExpression('=', b.identifier('$state'),
-                    b.callExpression(b.memberExpression(b.identifier('$instance'), b.identifier('getInitialState')), [])
-                )),
-                    b.expressionStatement(b.assignmentExpression('=', b.identifier('$references'), b.arrayExpression([])))];
-            if (clazzName == 'Store') {
-                instance.get.forEach(function (prop_method) {
-                    if (prop_method.key.name != 'getInitialState')
-                        addRef.obj.properties.push(b.property(
+          b.expressionStatement(b.assignmentExpression('=', $instance, b.objectExpression(processed_instance.get.concat(processed_instance.set)))),
+
+                    b.expressionStatement(b.assignmentExpression('=', $references, b.arrayExpression([])))];
+            if (clazzName == 'Store')
+                fnCreateStore();
+            if (clazzName == 'View')
+                fnCreateView();
+
+            return b.functionDeclaration(b.identifier('create' + clazzName + 'Instance'), [b.identifier('dispatcher')], b.blockStatement(body));
+
+            function fnCreateStore() {
+                var dispatchTokensReg = b.objectExpression([]);
+                processed_instance.get.forEach(function (prop_method) {
+                    if (prop_method.key.name != 'getInitialState') {
+                        refobject.properties.push(b.property(
                             'init', prop_method.key,
-                            b.callExpression(b.memberExpression(b.memberExpression(b.identifier('$instance'), prop_method.key),
-                                b.identifier('bind')), [b.identifier('$instance')])
+                            b.callExpression(b.memberExpression(b.memberExpression($instance, prop_method.key),
+                                b.identifier('bind')), [$instance])
                         ));
+                    }
+                });
+
+                processed_instance.set.forEach(function (prop_method) {
+                    if (prop_method.key.name == 'getInitialState')
+                        return;
+                    var fn = prop_method.value;
+                    var action_name = b.literal(clazz.id.name + '_' + prop_method.key.name)
+                    refobject.properties.push(b.property(
+                        'init', prop_method.key,
+                        b.functionExpression(b.identifier(prop_method.key.name + "_dispatch"),
+                            fn.params, b.blockStatement([
+                        b.expressionStatement(b.callExpression(
+                                    b.memberExpression(b.identifier('dispatcher'), b.identifier('dispatch')), [b.objectExpression([
+                                      b.property('init', b.identifier('action'), action_name)].concat(fn.params.map(function (p) {
+                                        return b.property('init', b.identifier('arg_' + p.name), p)
+                                    })))]))]))));
+
+                    dispatchTokensReg.properties.push(
+                        b.property('init', prop_method.key, b.callExpression(
+                            b.memberExpression(b.identifier('dispatcher'), b.identifier('register')), [
+                                    b.functionExpression(null, [b.identifier('payload')], b.blockStatement([
+                                        b.ifStatement(b.binaryExpression('===',
+                                            b.memberExpression(b.identifier('payload'), b.identifier('action')),
+                                            action_name),
+                                        b.expressionStatement(
+                                            b.callExpression(b.memberExpression(
+                                                b.memberExpression($instance, prop_method.key), b.identifier('call')), [
+                                        $instance
+                                    ].concat(fn.params.map(function (p) {
+                                                return b.memberExpression(b.identifier('payload'), b.identifier('arg_' + p.name))
+                                            })))))
+                            ]))]
+                        )));
                 });
                 body.push(
-                    b.expressionStatement(
-                        b.assignmentExpression('=', b.identifier('$dispatchToken'),
-                            b.callExpression(b.memberExpression(b.identifier('dispatcher'), b.identifier('register')), [
-                b.functionExpression(null, [b.identifier('payload')], b.blockStatement([
-                    b.variableDeclaration('var', [b.variableDeclarator(b.identifier('fn'), b.memberExpression(b.identifier('$instance'), b.memberExpression(b.identifier('payload'), b.identifier('action')), true))]),
-                    b.ifStatement(b.identifier('fn'),
-                                        b.expressionStatement(b.callExpression(
-                                            b.memberExpression(b.identifier('fn'), b.identifier('apply')), [b.identifier('$instance'), b.memberExpression(b.identifier('payload'), b.identifier('args'))])))
-                                //b.expressionStatement(b.assignmentExpression('=', b.identifier('$instance_set'), b.objectExpression(instance.set)))
-                                ]))]))));
+                    b.expressionStatement(b.assignmentExpression('=', $state,
+                        b.callExpression(b.memberExpression($instance, b.identifier('getInitialState')), [])
+                    )), b.expressionStatement(
+                        b.assignmentExpression('=', $dispatchTokens, dispatchTokensReg)));
                 body.push(
                     b.ifStatement(b.memberExpression(b.identifier('dispatcher'), b.identifier('emitter')),
                         b.expressionStatement(
@@ -153,14 +192,13 @@ function transform_ast(inputFileName, source_ast) {
                     ])))))
                 );
             }
-            return b.functionDeclaration(b.identifier('create' + clazzName + 'Instance'), [b.identifier('dispatcher')], b.blockStatement(body));
         }
 
-        function fnDestroy() {
+        function fnDestroyInstance() {
             var body = [
-            b.expressionStatement(b.unaryExpression('delete', b.identifier('$instance'))),
-            b.expressionStatement(b.unaryExpression('delete', b.identifier('$state'))),
-            b.expressionStatement(b.unaryExpression('delete', b.identifier('$references'))),
+            b.expressionStatement(b.unaryExpression('delete', $instance)),
+            b.expressionStatement(b.unaryExpression('delete', $state)),
+            b.expressionStatement(b.unaryExpression('delete', $references)),
         ];
             if (clazzName === 'Store')
                 body.unshift(
@@ -175,7 +213,7 @@ function transform_ast(inputFileName, source_ast) {
                 b.blockStatement(body));
         }
 
-        function createInstance() {
+        function processInstance() {
             var initialStateObj, initialStateFn,
                 _get = [],
                 _set = [];
@@ -277,13 +315,14 @@ function transform_ast(inputFileName, source_ast) {
                 visitThisExpression: visitThisExpression
             });
 
-            if (!emit_something)
+            if (state_was_changed && !emit_something && method.key.name != 'constructor')
+                throwError(method, "method %0 changed state then it must emit some event", method.key.name);
 
             //        if (state_was_changed) {
             //            methodBody.push(b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(),
             //                b.identifier('emit')), [b.literal('change')])));
             //        }
-                return state_was_changed;
+            return state_was_changed;
 
             function visitThisExpression(path) {
 
@@ -304,7 +343,7 @@ function transform_ast(inputFileName, source_ast) {
                     if (last_node.property.name == 'emit')
                         processEmit();
                 } else {
-                    path.replace(b.identifier('$state'));
+                    path.replace($state);
                 }
 
                 this.traverse(path);
@@ -336,7 +375,7 @@ function transform_ast(inputFileName, source_ast) {
 
                     var event_name = call_node.arguments[0].value;
                     var emit = b.expressionStatement(b.callExpression(
-                        b.memberExpression(b.identifier('$references'),
+                        b.memberExpression($references,
                             b.identifier('forEach')), [
                             b.functionExpression(null, [b.identifier('r')], b.blockStatement([
                                 b.expressionStatement(b.callExpression(
@@ -349,8 +388,8 @@ function transform_ast(inputFileName, source_ast) {
                     call_path.replace(emit);
 
                     var def = true;
-                    for (var i = 0; i < addRef.obj.properties.length; i++)
-                        if (addRef.obj.properties[i].key.name == '_on' + event_name) {
+                    for (var i = 0; i < refobject.properties.length; i++)
+                        if (refobject.properties[i].key.name == '_on' + event_name) {
                             def = false;
                             break;
                         }
@@ -362,7 +401,7 @@ function transform_ast(inputFileName, source_ast) {
                         //                                b.functionTypeAnnotation(b.voidTypeAnnotation, null));
                         //                        listenner.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_type.id, []));;
                         //                    }
-                        addRef.obj.properties.push(
+                        refobject.properties.push(
                             b.property('init', b.identifier('_on' + event_name), b.arrayExpression([])),
 
                             b.property('init', b.identifier('add' + event_name + 'Listenner'),
@@ -392,42 +431,46 @@ function transform_ast(inputFileName, source_ast) {
             }
         }
 
-        function fnAddRef() {
-            var refObj = b.objectExpression([
-                  b.property('init', b.identifier('getState'), b.functionExpression(null, [], b.blockStatement(
-                      [b.returnStatement(b.identifier('$state'))]))),
-                  b.property('init', b.identifier('release' + clazzName + 'Reference'), fnReleaseRef())
-              ]);
-            var fn = b.functionExpression(b.identifier('add' + clazzName + 'Reference'), [b.identifier('dispatcher')], b.blockStatement([
-              b.ifStatement(
-                    b.binaryExpression('==', b.memberExpression(b.identifier('$references'), b.identifier('length')), b.literal(0)),
-                    b.expressionStatement(b.callExpression(b.identifier('create' + clazzName + 'Instance'), [b.identifier('dispatcher')]))),
-              b.variableDeclaration('var', [b.variableDeclarator(b.identifier('ref'),
-                    refObj
-            )]),
-            b.expressionStatement(b.callExpression(
-                    b.memberExpression(b.identifier('$references'), b.identifier('push')), [b.identifier('ref')])),
-            b.returnStatement(b.identifier('ref'))
-        ]));
+        function fnCreateReference() {
+            refobject.properties.push(
+                b.property('init', b.identifier('getState'), b.functionExpression(null, [], b.blockStatement(
+                      [b.returnStatement($state)]))),
+                b.property('init', b.identifier('release' + clazzName + 'Reference'), fnReleaseRef())
+            );
+            if (transpilingStore)
+                refobject.properties.push(
+                    b.property('init', b.identifier('dispatchToken'), $dispatchTokens));
 
-            return {
-                obj: refObj,
-                fn: fn
-            };
+            var body = [
+              b.ifStatement(
+                    b.binaryExpression('==', b.memberExpression($references, b.identifier('length')), b.literal(0)),
+                    b.expressionStatement(b.callExpression(
+                        b.identifier('create' + clazzName + 'Instance'), [b.identifier('dispatcher')]))),
+              b.variableDeclaration('var', [b.variableDeclarator(b.identifier('ref'),
+                    refobject
+              )])
+            ];
+
+            body.push(b.expressionStatement(b.callExpression(
+                    b.memberExpression($references, b.identifier('push')), [b.identifier('ref')])),
+                b.returnStatement(b.identifier('ref'))
+            );
+
+            return b.functionExpression(b.identifier('add' + clazzName + 'Reference'), [b.identifier('dispatcher')], b.blockStatement(body));
         }
 
         function fnReleaseRef(name) {
             return b.functionExpression(b.identifier('release' + clazzName + 'Reference'), [], b.blockStatement([
               b.ifStatement(
                     b.logicalExpression('&&',
-                        b.binaryExpression('==', b.memberExpression(b.identifier('$references'), b.identifier('length')), b.literal(1)),
-                        b.binaryExpression('==', b.memberExpression(b.identifier('$references'), b.literal(0), true), b.identifier('ref'))),
+                        b.binaryExpression('==', b.memberExpression($references, b.identifier('length')), b.literal(1)),
+                        b.binaryExpression('==', b.memberExpression($references, b.literal(0), true), b.identifier('ref'))),
                     b.expressionStatement(b.callExpression(b.identifier('destroy' + clazzName + 'Instance'), [])),
                     b.blockStatement([
                             b.variableDeclaration('var', [b.variableDeclarator(b.identifier('i'),
-                            b.callExpression(b.memberExpression(b.identifier('$references'),
+                            b.callExpression(b.memberExpression($references,
                                 b.identifier('indexOf')), [b.identifier('ref')]))]),
-                    b.expressionStatement(b.callExpression(b.memberExpression(b.identifier('$references'),
+                    b.expressionStatement(b.callExpression(b.memberExpression($references,
                             b.identifier('splice')), [b.identifier('i'), b.literal(1)]))]))
                         ]));
         }
