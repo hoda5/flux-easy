@@ -1,3 +1,5 @@
+type EventType = () => void;
+
 function LoginStore() {
     type $StateType = {logged_user: string}
     var $references, $state: $StateType, $instance, $dispatchToken;
@@ -21,10 +23,49 @@ function LoginStore() {
                     }
                 },
 
-                onLoggedIn: null,
-                onLoginError: null,
-                onLoggedOut: null,
-                getLoggedUser: $instance.getLoggedUser.bind($instance)
+                _onLoggedIn: [],
+
+                addLoggedInListenner: function(listenner) {
+                    ret._onLoggedIn.push(listenner);
+                },
+
+                removeLoggedInListenner: function(listenner) {
+                    var i = ret._onLoggedIn.indexOf(listenner);
+
+                    if (i >= 0)
+                        ret._onLoggedIn.splice(i, 1);
+                },
+
+                _onLoginError: [],
+
+                addLoginErrorListenner: function(listenner) {
+                    ret._onLoginError.push(listenner);
+                },
+
+                removeLoginErrorListenner: function(listenner) {
+                    var i = ret._onLoginError.indexOf(listenner);
+
+                    if (i >= 0)
+                        ret._onLoginError.splice(i, 1);
+                },
+
+                _onLoggedOut: [],
+
+                addLoggedOutListenner: function(listenner) {
+                    ret._onLoggedOut.push(listenner);
+                },
+
+                removeLoggedOutListenner: function(listenner) {
+                    var i = ret._onLoggedOut.indexOf(listenner);
+
+                    if (i >= 0)
+                        ret._onLoggedOut.splice(i, 1);
+                },
+
+                getLoggedUser: $instance.getLoggedUser.bind($instance),
+                checkWindowLocationHash: $instance.checkWindowLocationHash.bind($instance),
+                login: $instance.login.bind($instance),
+                logout: $instance.logout.bind($instance)
             };
 
             $references.push(ref);
@@ -51,7 +92,7 @@ function LoginStore() {
                 if (window.location.hash) {
                     $state.logged_user = window.location.hash;
                     $references.forEach(function(r) {
-                        $emitter(r.onLoggedIn);
+                        r._onLoggedIn.forEach($emitter);
                     });;
                 }
             },
@@ -60,18 +101,18 @@ function LoginStore() {
                 if (name == 'fluxeasy' && password == '123') {
                     $state.logged_user = 'fluxeasy';
                     $references.forEach(function(r) {
-                        $emitter(r.onLoggedIn);
+                        r._onLoggedIn.forEach($emitter);
                     });;
                 } else
                     $references.forEach(function(r) {
-                        $emitter(r.onLoginError);
+                        r._onLoginError.forEach($emitter);
                     });;
             },
 
             logout: function() {
                 $state.logged_user = null;
                 $references.forEach(function(r) {
-                    $emitter(r.onLoggedOut);
+                    r._onLoggedOut.forEach($emitter);
                 });;
             }
         };
