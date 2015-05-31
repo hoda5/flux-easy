@@ -3,7 +3,7 @@ function LoginStore() {
     var $dependents, $instance, $dispatchTokens, $state: $StateType;
 
     return {
-        createStoreReference: function addStoreReference(dispatcher) {
+        createStoreReference: function createStoreReference(dispatcher) {
             if (!$instance)
                 createStoreInstance(dispatcher);
 
@@ -118,8 +118,12 @@ function LoginStore() {
             login: function(name, password) {
                 if (name == 'fluxeasy' && password == '123') {
                     $state.logged_user = 'fluxeasy';
-                    $dependents.forEach(function(r) {
-                        r._onLoggedIn.forEach($emitter);
+                    $dependents.forEach(function($ref) {
+                        $ref._onLoggedIn.forEach(function($event) {
+                            $emitter($event, {
+                                name: name
+                            });
+                        });
                     });;
                 } else
                     $dependents.forEach(function(r) {

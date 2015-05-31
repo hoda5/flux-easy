@@ -74,7 +74,7 @@ function transform_ast(inputFileName, source_ast) {
         var transpilingStore = clazzName == 'Store',
             transpilingView = clazzName == 'View';
 
-        var state_type, event_type,
+        var state_type, event_without_param, event_with_param,
             refobject = b.objectExpression([]),
             $instance = b.identifier('$instance'),
             $instanceobj = b.objectExpression([]),
@@ -108,8 +108,10 @@ function transform_ast(inputFileName, source_ast) {
                 private_vars.declarations[private_vars.declarations.length - 1]
                     .id.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(state_type.id, null));
             }
-            if (event_type)
-                class_body.unshift(event_type);
+            if (event_with_param)
+                class_body.unshift(event_with_param);
+            if (event_without_param)
+                class_body.unshift(event_without_param);
         }
 
         class_body.push(
@@ -322,11 +324,10 @@ function transform_ast(inputFileName, source_ast) {
                             n.ThisExpression.check(stmt.expression.left.object)
                         ) {
                             var r = stmt.expression.right;
-                            if (n.CallExpression.check(r) && n.MemberExpression.check(r.callee) && r.callee.property.name == 'createReference') {
+                            if (n.CallExpression.check(r) && n.MemberExpression.check(r.callee) && /create((Store)|(View))Reference/.test(r.callee.property.name)) {
                                 $instanceobj.properties.push(b.property('init', stmt.expression.left.property, r));
                                 $destroy_body.push(
-                                    b.expressionStatement(b.callExpression(b.memberExpression(b.memberExpression($instance, stmt.expression.left.property), b.identifier('releaseReference')), []))
-                                );
+                                    b.expressionStatement(b.callExpression(b.memberExpression(b.memberExpression($instance, stmt.expression.left.property), b.identifier(r.callee.property.name.replace('create', 'release'))), [])));
                             } else
                                 setInitialState(stmt.expression.left.property, null, stmt.expression.right);
                             return;
@@ -411,22 +412,51 @@ function transform_ast(inputFileName, source_ast) {
                             typeof call_node.arguments[0].value === 'string'))
                         throwError(call_node, 'Invalid emit');
 
-                    if (call_node.arguments.length != 1)
-                        throwError(call_node, 'FluxEasy TODO: Event arguments');
+                    var has_params;
+
+                    if (call_node.arguments.length == 1)
+                        has_params = false;
+                    else if (call_node.arguments.length <= 2) {
+                        if (!n.ObjectExpression.check(call_node.arguments[1]))
+                            throwError(call_node, 'Use an object as event arguments');
+                        has_params = true;
+                    } else
+                        throwError(call_node, 'Use an object as event arguments');
 
                     var event_name = call_node.arguments[0].value;
-                    var emit = b.expressionStatement(b.callExpression(
-                        b.memberExpression($dependents,
-                            b.identifier('forEach')), [
+                    var emit;
+
+                    if (has_params)
+                        emit = b.expressionStatement(b.callExpression(
+                            b.memberExpression($dependents,
+                                b.identifier('forEach')), [
+                            b.functionExpression(null, [b.identifier('$ref')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                        b.memberExpression(
+                                            b.memberExpression(b.identifier('$ref'),
+                                                b.identifier('_on' + event_name)),
+                                            b.identifier('forEach')), [
+                                            b.functionExpression(null, [b.identifier('$event')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                                    b.identifier('$emitter'), [b.identifier('$event'), call_node.arguments[1]
+                                ]))
+                                        ]))
+                            ]))
+                       ]))]));
+                    else
+                        emit = b.expressionStatement(b.callExpression(
+                            b.memberExpression($dependents,
+                                b.identifier('forEach')), [
                             b.functionExpression(null, [b.identifier('r')], b.blockStatement([
                                 b.expressionStatement(b.callExpression(
-                                    b.memberExpression(
-                                        b.memberExpression(b.identifier('r'), b.identifier('_on' + event_name)), b.identifier('forEach')), [b.identifier('$emitter')
+                                        b.memberExpression(
+                                            b.memberExpression(b.identifier('r'),
+                                                b.identifier('_on' + event_name)),
+                                            b.identifier('forEach')), [b.identifier('$emitter')
                                         ]
-                                ))
+                                    ))
                             ]))
-                ]));
-                    call_path.replace(emit);
+                          ]));
 
                     var def = true;
                     for (var i = 0; i < refobject.properties.length; i++)
@@ -436,12 +466,18 @@ function transform_ast(inputFileName, source_ast) {
                         }
                     if (def) {
                         var listenner = b.identifier('listenner');
-                        //                    if(state_type) {
-                        //                        if (!event_type)
-                        //                            event_type = b.typeAlias(b.identifier('$EventType'), null,
-                        //                                b.functionTypeAnnotation(b.voidTypeAnnotation, null));
-                        //                        listenner.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_type.id, []));;
-                        //                    }
+                        // TODO: define typeAlias for events
+                        //                        if (state_type) {
+                        //                            if (has_params)
+                        //                            ;
+                        //                            else
+                        //                            if (!event_without_param)
+                        //                                event_without_param = b.typeAlias(b.identifier('$EventWithoutParams'), null,
+                        //                                    b.declareFunction(b.functionTypeAnnotation([], {
+                        //                                        "type": "VoidTypeAnnotation"
+                        //                                    }, null, null)));
+                        //                            listenner.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_without_param.id, null));;
+                        //                        }
                         refobject.properties.push(
                             b.property('init', b.identifier('_on' + event_name), b.arrayExpression([])),
 
@@ -467,6 +503,8 @@ function transform_ast(inputFileName, source_ast) {
                                         ])))
                         );
                     }
+                    call_path.replace(emit);
+
                 }
 
             }
@@ -556,7 +594,7 @@ b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.
                 b.returnStatement(b.identifier('ref'))
             );
 
-            return b.functionExpression(b.identifier('add' + clazzName + 'Reference'), [b.identifier('dispatcher')], b.blockStatement(body));
+            return b.functionExpression(b.identifier('create' + clazzName + 'Reference'), [b.identifier('dispatcher')], b.blockStatement(body));
         }
 
         function fnReleaseRef(name) {

@@ -4,7 +4,7 @@ function LoginView() {
   var $dependents, $instance;
 
   return {
-    createViewReference: function addViewReference(dispatcher) {
+    createViewReference: function createViewReference(dispatcher) {
       if (!$instance)
         createViewInstance(dispatcher);
 
@@ -28,12 +28,11 @@ function LoginView() {
     $dependents = [];
 
     $instance = React.createComponent({
-      loginStore: LoginStore.createReference(),
-
       getInitialState: function getInitialState() {
         var state = {
           name: '',
-          password: ''
+          password: '',
+          loginStore: LoginStore.createReference()
         };
 
         return state;
@@ -81,7 +80,6 @@ function LoginView() {
   }
 
   function destroyViewInstance(dispatcher) {
-    $instance.loginStore.releaseReference();
     delete $instance;
     delete $dependents;
   }
