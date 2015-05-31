@@ -1,5 +1,5 @@
 import FluxEasy from 'flux-easy';
-import loginStore from './login.store';
+import LoginStore from './login.store';
 
 class LoginView extends FluxEasy.View {
 
@@ -7,6 +7,7 @@ class LoginView extends FluxEasy.View {
   password: string;
 
   constructor(){
+    this.loginStore= LoginStore.createReference();
     this.name='';
     this.password='';
   }
@@ -26,7 +27,7 @@ class LoginView extends FluxEasy.View {
   onClick(){
     var user = this.state.username;
     var pass = this.state.password;
-    loginStore.autentication(user, pass);
+    this.loginStore.autentication(user, pass);
   }
 }
 

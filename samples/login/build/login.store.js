@@ -1,10 +1,10 @@
 function LoginStore() {
     type $StateType = {logged_user: string}
-    var $references, $instance, $dispatchTokens, $state: $StateType;
+    var $dependents, $instance, $dispatchTokens, $state: $StateType;
 
     return {
         createStoreReference: function addStoreReference(dispatcher) {
-            if ($references.length == 0)
+            if (!$instance)
                 createStoreInstance(dispatcher);
 
             var ref = {
@@ -48,11 +48,11 @@ function LoginStore() {
                 },
 
                 releaseStoreReference: function releaseStoreReference() {
-                    if ($references.length == 1 && $references[0] == ref)
+                    if ($dependents.length == 1 && $dependents[0] == ref)
                         destroyStoreInstance();
                     else {
-                        var i = $references.indexOf(ref);
-                        $references.splice(i, 1);
+                        var i = $dependents.indexOf(ref);
+                        $dependents.splice(i, 1);
                     }
                 },
 
@@ -84,13 +84,13 @@ function LoginStore() {
                 }
             };
 
-            $references.push(ref);
+            $dependents.push(ref);
             return ref;
         }
     };
 
     function createStoreInstance(dispatcher) {
-        $references = [];
+        $dependents = [];
 
         $instance = {
             getInitialState: function getInitialState() {
@@ -109,7 +109,7 @@ function LoginStore() {
             checkWindowLocationHash: function() {
                 if (window.location.hash) {
                     $state.logged_user = window.location.hash;
-                    $references.forEach(function(r) {
+                    $dependents.forEach(function(r) {
                         r._onLoggedIn.forEach($emitter);
                     });;
                 }
@@ -118,18 +118,18 @@ function LoginStore() {
             login: function(name, password) {
                 if (name == 'fluxeasy' && password == '123') {
                     $state.logged_user = 'fluxeasy';
-                    $references.forEach(function(r) {
+                    $dependents.forEach(function(r) {
                         r._onLoggedIn.forEach($emitter);
                     });;
                 } else
-                    $references.forEach(function(r) {
+                    $dependents.forEach(function(r) {
                         r._onLoginError.forEach($emitter);
                     });;
             },
 
             logout: function() {
                 $state.logged_user = null;
-                $references.forEach(function(r) {
+                $dependents.forEach(function(r) {
                     r._onLoggedOut.forEach($emitter);
                 });;
             }
@@ -164,7 +164,7 @@ function LoginStore() {
     function destroyStoreInstance(dispatcher) {
         dispatcher.unregister($dispatchToken);
         delete $instance;
-        delete $references;
+        delete $dependents;
         delete $state;
         delete $dispatchToken;
         delete $emitter;

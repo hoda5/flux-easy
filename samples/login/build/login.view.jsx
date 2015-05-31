@@ -1,33 +1,35 @@
-import loginStore from './login.store';
+import LoginStore from './login.store';
 
 function LoginView() {
-  var $references, $instance;
+  var $dependents, $instance;
 
   return {
     createViewReference: function addViewReference(dispatcher) {
-      if ($references.length == 0)
+      if (!$instance)
         createViewInstance(dispatcher);
 
       var ref = {
         releaseViewReference: function releaseViewReference() {
-          if ($references.length == 1 && $references[0] == ref)
+          if ($dependents.length == 1 && $dependents[0] == ref)
             destroyViewInstance();
           else {
-            var i = $references.indexOf(ref);
-            $references.splice(i, 1);
+            var i = $dependents.indexOf(ref);
+            $dependents.splice(i, 1);
           }
         }
       };
 
-      $references.push(ref);
+      $dependents.push(ref);
       return ref;
     }
   };
 
   function createViewInstance(dispatcher) {
-    $references = [];
+    $dependents = [];
 
     $instance = React.createComponent({
+      loginStore: LoginStore.createReference(),
+
       getInitialState: function getInitialState() {
         var state = {
           name: '',
@@ -61,7 +63,7 @@ function LoginView() {
       onClick: function() {
         var user = this.state.username;
         var pass = this.state.password;
-        loginStore.autentication(user, pass);
+        this.loginStore.autentication(user, pass);
       },
 
       valueLink_username_change: function(newValue) {
@@ -79,8 +81,9 @@ function LoginView() {
   }
 
   function destroyViewInstance(dispatcher) {
+    $instance.loginStore.releaseReference();
     delete $instance;
-    delete $references;
+    delete $dependents;
   }
 }
 
