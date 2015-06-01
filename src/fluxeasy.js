@@ -484,7 +484,7 @@ function transform_ast(inputFileName, source_ast) {
                                 b.functionExpression(null, [listenner],
                                     b.blockStatement([
                             b.expressionStatement(b.callExpression(
-                                            b.memberExpression(b.memberExpression(b.identifier('ret'), b.identifier('_on' + event_name)),
+                                            b.memberExpression(b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
                                                 b.identifier('push')), [b.identifier('listenner')]))
                             ]))
                             ),
@@ -493,11 +493,11 @@ function transform_ast(inputFileName, source_ast) {
                                 b.functionExpression(null, [listenner], b.blockStatement([
                             b.variableDeclaration('var', [b.variableDeclarator(b.identifier('i'),
                                         b.callExpression(b.memberExpression(
-                                            b.memberExpression(b.identifier('ret'), b.identifier('_on' + event_name)),
+                                            b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
                                             b.identifier('indexOf')), [b.identifier('listenner')]))]),
                                     b.ifStatement(b.binaryExpression('>=', b.identifier('i'), b.literal(0)),
                                         b.expressionStatement(b.callExpression(b.memberExpression(
-                                            b.memberExpression(b.identifier('ret'), b.identifier('_on' + event_name)),
+                                            b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
                                             b.identifier('splice')), [b.identifier('i'), b.literal(1)])))
                                         ])))
                         );

@@ -8,40 +8,40 @@ var LoginStore = {
             _onLoggedIn: [],
 
             addLoggedInListenner: function(listenner) {
-                ret._onLoggedIn.push(listenner);
+                ref._onLoggedIn.push(listenner);
             },
 
             removeLoggedInListenner: function(listenner) {
-                var i = ret._onLoggedIn.indexOf(listenner);
+                var i = ref._onLoggedIn.indexOf(listenner);
 
                 if (i >= 0)
-                    ret._onLoggedIn.splice(i, 1);
+                    ref._onLoggedIn.splice(i, 1);
             },
 
             _onLoginError: [],
 
             addLoginErrorListenner: function(listenner) {
-                ret._onLoginError.push(listenner);
+                ref._onLoginError.push(listenner);
             },
 
             removeLoginErrorListenner: function(listenner) {
-                var i = ret._onLoginError.indexOf(listenner);
+                var i = ref._onLoginError.indexOf(listenner);
 
                 if (i >= 0)
-                    ret._onLoginError.splice(i, 1);
+                    ref._onLoginError.splice(i, 1);
             },
 
             _onLoggedOut: [],
 
             addLoggedOutListenner: function(listenner) {
-                ret._onLoggedOut.push(listenner);
+                ref._onLoggedOut.push(listenner);
             },
 
             removeLoggedOutListenner: function(listenner) {
-                var i = ret._onLoggedOut.indexOf(listenner);
+                var i = ref._onLoggedOut.indexOf(listenner);
 
                 if (i >= 0)
-                    ret._onLoggedOut.splice(i, 1);
+                    ref._onLoggedOut.splice(i, 1);
             },
 
             releaseStoreReference: function releaseStoreReference() {
@@ -111,8 +111,8 @@ var LoginStore = {
                 },
 
                 login: function(name, password) {
-                    if (name == 'fluxeasy' && password == '123') {
-                        LoginStore.__state.logged_user = 'fluxeasy';
+                    if (name!='' && password == '123') {
+                        LoginStore.__state.logged_user = name;
                         LoginStore.__dependents.forEach(function($ref) {
                             $ref._onLoggedIn.forEach(function($event) {
                                 LoginStore.__emitter($event, {
@@ -202,14 +202,16 @@ var LoginView = {
             };
 
             LoginView.__instance = React.createClass({displayName: "__instance",
-               //loginStore: LoginView.__requires.loginStore,
+                loginStore: LoginView.__requires.loginStore,
 
                 getInitialState: function getInitialState() {
                     var state = {
-                        name: '',
-                        password: ''
+                        username: '',
+                        password: '123'
                     };
 
+                    this.loginStore.addLoggedInListenner(this.refresh);
+                    this.loginStore.addLoggedOutListenner(this.refresh);
                     return state;
                 },
 
@@ -223,21 +225,36 @@ var LoginView = {
                             requestChange: this.valueLink_password_change
                         };
 
-                    return (
+                    var store=this.loginStore.getState();
+                    if (store.logged_user)
+                      return (React.createElement("div", null, "Hello ", store.logged_user,
+                          React.createElement("button", {onClick: this.logout}, "Logout")
+                          )
+                       );
+                    else
+                      return (
                       React.createElement("div", null,
-                          React.createElement("input", {type: "text", name: "username", placeholder: "Digite o usuário",
+                          React.createElement("input", {type: "text", placeholder: "Digite o usuário",
                                    valueLink: valueLink_username}),
-                          React.createElement("input", {className: '', type: "password", name: "password", placeholder: "Digite a senha",
+                          React.createElement("input", {className: '', type: "password", placeholder: "Digite a senha",
                                   valueLink: valueLink_password}),
-                          React.createElement("button", {onClick: this.onClick}, "Login")
+                          React.createElement("button", {onClick: this.login}, "Login")
                       )
-                    );
+                      );
                 },
 
-                onClick: function() {
+                refresh: function() {
+                  this.setState({});
+                },
+
+                login: function() {
                   var user = this.state.username;
                   var pass = this.state.password;
-                  this.loginStore.autentication(user, pass);
+                  this.loginStore.login(user, pass);
+                },
+
+                logout: function() {
+                  this.loginStore.logout();
                 },
 
                 valueLink_username_change: function(newValue) {
@@ -268,4 +285,4 @@ var LoginViewComponent = LoginView.createViewReference(dispatcher).Class;
 
 var l= React.createElement(LoginViewComponent, null);
 var a=document.getElementById('app');
-React.Render( l,a );
+React.render( l,a );

@@ -19,8 +19,8 @@ class LoginStore extends FluxEasy.Store {
     }
 
     login(name, password) {
-        if (name == 'fluxeasy' && password == '123') {
-            this.logged_user = 'fluxeasy';
+        if (name!='' && password == '123') {
+            this.logged_user = name;
             this.emit('LoggedIn', {
                 name: name
             })
@@ -38,26 +38,43 @@ class LoginView extends FluxEasy.View {
 
   constructor(){
     this.loginStore= LoginStore.createStoreReference();
-    this.name='';
-    this.password='';
+    this.username='';
+    this.password='123';
+    this.loginStore.addLoggedInListenner(this.refresh);
+    this.loginStore.addLoggedOutListenner(this.refresh);
   }
 
   render() {
-    return (
+    var store=this.loginStore.getState();
+    if (store.logged_user)
+      return (<div>Hello {store.logged_user}
+          <button onClick={this.logout}>Logout</button>
+          </div>
+       );
+    else
+      return (
       <div>
-          <input type="text" name="username" placeholder="Digite o usuário"
+          <input type="text" placeholder="Digite o usuário"
                    valueLink={this.state.username} />
-          <input className={''} type="password" name="password" placeholder="Digite a senha"
+          <input className={''} type="password" placeholder="Digite a senha"
                   valueLink={this.state.password} />
-          <button onClick={this.onClick}>Login</button>
+          <button onClick={this.login}>Login</button>
       </div>
-    );
+      );
   }
 
-  onClick(){
+  refresh(){
+    this.setState({});
+  }
+
+  login(){
     var user = this.state.username;
     var pass = this.state.password;
-    this.loginStore.autentication(user, pass);
+    this.loginStore.login(user, pass);
+  }
+
+  logout(){
+    this.loginStore.logout();
   }
 }
 
@@ -66,4 +83,4 @@ var LoginViewComponent = LoginView.createViewReference(dispatcher).Class;
 
 var l= <LoginViewComponent />;
 var a=document.getElementById('app')
-React.Render( l,a );
+React.render( l,a );
