@@ -1,32 +1,32 @@
 {
-  "name": "flux-easy",
-  "version": "0.0.1",
-  "description": "Transpiler for use flux with simplicity",
-  "bin": "bin/fluxeasy-cli.js",
-  "main": "src/fluxeasy.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tr0l/flux-easy.git"
-  },
-  "keywords": [
+    "name": "flux-easy",
+    "version": "0.0.2",
+    "description": "Transpiler for use flux with simplicity",
+    "bin": "bin/fluxeasy-cli.js",
+    "main": "src/fluxeasy.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/tr0l/flux-easy.git"
+    },
+    "keywords": [
     "flux",
     "react",
     "es6",
     "esprima-fb",
     "ast-types"
   ],
-  "author": "thr0w",
-  "license": "GPL3",
-  "bugs": {
-    "url": "https://github.com/thr0w/flux-easy/issues"
-  },
-  "homepage": "https://github.com/thr0w/flux-easy",
-  "dependencies": {
-    "ast-types": "^0.7.6",
-    "esprima-fb": "^15001.1.0-dev-harmony-fb",
-    "recast": "^0.10.12"
-  }
+    "author": "thr0w",
+    "license": "GPL3",
+    "bugs": {
+        "url": "https://github.com/thr0w/flux-easy/issues"
+    },
+    "homepage": "https://github.com/thr0w/flux-easy",
+    "dependencies": {
+        "ast-types": "^0.7.6",
+        "esprima-fb": "^15001.1.0-dev-harmony-fb",
+        "recast": "^0.10.12"
+    }
 }
