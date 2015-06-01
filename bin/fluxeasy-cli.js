@@ -1,3 +1,5 @@
+#!/usr/local/bin/node
+
 var fluxeasy = require('../src/fluxeasy');
 
 var options = {
@@ -16,6 +18,6 @@ if (process.argv.length == 5) {
 fluxeasy.transform_file(process.argv[2], process.argv[3], options);
 
 function sintax_error() {
-    console.error('Sintase: flux-easy input output [--map|mapfile]');
+    console.error('Sintax: flux-easy input output [--map|inputMapfile]');
     process.exit(1);
 }

@@ -5,43 +5,8 @@ var LoginStore = {
 
         var ref = {
             _onLoggedIn: [],
-
-            addLoggedInListenner: function(listenner) {
-                ref._onLoggedIn.push(listenner);
-            },
-
-            removeLoggedInListenner: function(listenner) {
-                var i = ref._onLoggedIn.indexOf(listenner);
-
-                if (i >= 0)
-                    ref._onLoggedIn.splice(i, 1);
-            },
-
             _onLoginError: [],
-
-            addLoginErrorListenner: function(listenner) {
-                ref._onLoginError.push(listenner);
-            },
-
-            removeLoginErrorListenner: function(listenner) {
-                var i = ref._onLoginError.indexOf(listenner);
-
-                if (i >= 0)
-                    ref._onLoginError.splice(i, 1);
-            },
-
             _onLoggedOut: [],
-
-            addLoggedOutListenner: function(listenner) {
-                ref._onLoggedOut.push(listenner);
-            },
-
-            removeLoggedOutListenner: function(listenner) {
-                var i = ref._onLoggedOut.indexOf(listenner);
-
-                if (i >= 0)
-                    ref._onLoggedOut.splice(i, 1);
-            },
 
             releaseStoreReference: function releaseStoreReference() {
                 if (LoginStore.__dependents.length == 1 && LoginStore.__dependents[0] == ref)
@@ -57,6 +22,28 @@ var LoginStore = {
             },
 
             dispatchTokens: LoginStore.__dispatchTokens,
+
+            addEventListener: function(event, listener) {
+                var e = ref["_on" + event];
+
+                if (!e)
+                    throw new Error("Invalid event: " + event);
+
+                e.push(listener);
+            },
+
+            removeEventListener: function(event, listener) {
+                var e = ref["_on" + event];
+
+                if (!e)
+                    throw new Error("Invalid event: " + event);
+
+                var i = e.indexOf(listener);
+
+                if (i >= 0)
+                    e.splice(i, 1);
+            },
+
             getLoggedUser: LoginStore.__instance.getLoggedUser.bind(LoginStore.__instance),
 
             checkWindowLocationHash: function checkWindowLocationHash_dispatch() {
@@ -209,8 +196,8 @@ var LoginView = {
                         password: '123'
                     };
 
-                    this.loginStore.addLoggedInListenner(this.refreshView);
-                    this.loginStore.addLoggedOutListenner(this.refreshView);
+                    this.loginStore.addEventListener('LoggedIn', this.refreshView);
+                    this.loginStore.addEventListener('LoggedOut', this.refreshView);
                     return state;
                 },
 
@@ -235,7 +222,7 @@ var LoginView = {
                       <div>
                           <input type="text" placeholder="Digite o usuário"
                                    valueLink={valueLink_username} />
-                          <input className={''} type="password" placeholder="Digite a senha"
+                          <input type="password" placeholder="Digite a senha"
                                   valueLink={valueLink_password} />
                           <button onClick={this.login}>Login</button>
                       </div>

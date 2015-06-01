@@ -348,12 +348,12 @@ function transform_ast(inputFileName, source_ast) {
             var visits;
             if (transpilingStore)
                 visits = {
-                    visitCallExpression: visitAddEventListenner,
+                    visitCallExpression: visitAddEventListener,
                     visitThisExpression: visitThisExpressionForStore
                 };
             if (transpilingView) {
                 visits = {
-                    visitCallExpression: visitAddEventListenner
+                    visitCallExpression: visitAddEventListener
                 };
                 if (method.key.name == 'render')
                     visits.visitJSXAttribute = visitJSXAttribute;
@@ -470,7 +470,7 @@ function transform_ast(inputFileName, source_ast) {
                             break;
                         }
                     if (def) {
-                        var listenner = b.identifier('listenner');
+                        var listener = b.identifier('listener');
                         // TODO: define typeAlias for events
                         //                        if (state_type) {
                         //                            if (has_params)
@@ -481,32 +481,12 @@ function transform_ast(inputFileName, source_ast) {
                         //                                    b.declareFunction(b.functionTypeAnnotation([], {
                         //                                        "type": "VoidTypeAnnotation"
                         //                                    }, null, null)));
-                        //                            listenner.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_without_param.id, null));;
+                        //                            listener.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_without_param.id, null));;
                         //                        }
                         refobject.properties.push(
-                            b.property('init', b.identifier('_on' + event_name), b.arrayExpression([])),
-
-                            b.property('init', b.identifier('add' + event_name + 'Listenner'),
-                                b.functionExpression(null, [listenner],
-                                    b.blockStatement([
-                            b.expressionStatement(b.callExpression(
-                                            b.memberExpression(b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
-                                                b.identifier('push')), [b.identifier('listenner')]))
-                            ]))
-                            ),
-
-                            b.property('init', b.identifier('remove' + event_name + 'Listenner'),
-                                b.functionExpression(null, [listenner], b.blockStatement([
-                            b.variableDeclaration('var', [b.variableDeclarator(b.identifier('i'),
-                                        b.callExpression(b.memberExpression(
-                                            b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
-                                            b.identifier('indexOf')), [b.identifier('listenner')]))]),
-                                    b.ifStatement(b.binaryExpression('>=', b.identifier('i'), b.literal(0)),
-                                        b.expressionStatement(b.callExpression(b.memberExpression(
-                                            b.memberExpression(b.identifier('ref'), b.identifier('_on' + event_name)),
-                                            b.identifier('splice')), [b.identifier('i'), b.literal(1)])))
-                                        ])))
+                            b.property('init', b.identifier('_on' + event_name), b.arrayExpression([]))
                         );
+
                     }
                     call_path.replace(emit);
 
@@ -573,27 +553,27 @@ b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.
                 this.traverse(path);
             }
 
-            function visitAddEventListenner(path) {
+            function visitAddEventListener(path) {
                 var node = path.node;
-                if (n.MemberExpression.check(node.callee) && (/((add)|(remove)).*Listenner/g.test(node.callee.property.name))) {
-                    if (node.arguments.length == 1) {
-                        //                        if (!n.FunctionExpression.check(node.arguments[0]))
-                        //                            throwError(node, "Need a callback for listenner");
-                    } else if (node.arguments.length > 1)
-                        throwError(node, "listenner just need callback as argument");
-                    else if (transpilingStore)
-                        throwError(node, "Store need a callback for listenner");
-                    else {
-                        if (!$refreshView)
-                            $refreshView = b.property('init', b.identifier('refreshView'),
-                                b.functionExpression(null, [], b.blockStatement([b.expressionStatement(
-                                        b.callExpression(b.memberExpression(b.thisExpression(),
-                                            b.identifier('setState')), [b.objectExpression([])]))
-                        ])));
-                        node.arguments.push(b.memberExpression(b.thisExpression(),
-                            b.identifier('refreshView')))
-                        path.replace(node);
-                    }
+                if (n.MemberExpression.check(node.callee) && (node.callee.property.name == 'addEventListener')) {
+                    if (node.arguments.length == 2) {
+                        if (n.ThisExpression.check(node.arguments[1])) {
+                            if (transpilingStore)
+                                throwError(node, "use addEventListener(event, function)");
+                            if (!$refreshView)
+                                $refreshView = b.property('init', b.identifier('refreshView'),
+                                    b.functionExpression(null, [], b.blockStatement([b.expressionStatement(
+                                            b.callExpression(b.memberExpression(b.thisExpression(),
+                                                b.identifier('setState')), [b.objectExpression([])]))
+                            ])));
+                            node.arguments[1] = b.memberExpression(b.thisExpression(),
+                                b.identifier('refreshView'));
+                            path.replace(node);
+                        }
+                    } else if (transpilingView)
+                        throwError(node, "use addEventListener(event, function|this) - this rerender the view");
+                    else
+                        throwError(node, "use addEventListener(event, function)");
                 }
                 this.traverse(path);
             }
@@ -603,11 +583,45 @@ b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.
             refobject.properties.push(
                 b.property('init', b.identifier('release' + clazzName + 'Reference'), fnReleaseRef())
             );
-            if (transpilingStore)
+            if (transpilingStore) {
                 refobject.properties.push(
                     b.property('init', b.identifier('getState'), b.functionExpression(null, [], b.blockStatement(
                       [b.returnStatement($state)]))),
-                    b.property('init', b.identifier('dispatchTokens'), $dispatchTokens));
+                    b.property('init', b.identifier('dispatchTokens'), $dispatchTokens),
+
+
+                    b.property('init', b.identifier('addEventListener'),
+                        b.functionExpression(null, [b.identifier('event'), b.identifier('listener')],
+                            b.blockStatement([
+                                b.variableDeclaration('var', [b.variableDeclarator(b.identifier('e'),
+                                    b.memberExpression(b.identifier('ref'), b.binaryExpression('+', b.literal('_on'), b.identifier('event')), true))]),
+                                b.ifStatement(b.unaryExpression('!', b.identifier('e')),
+                                    b.throwStatement(b.newExpression(b.identifier('Error'), [b.binaryExpression('+', b.literal('Invalid event: '), b.identifier('event'))]))),
+                                b.expressionStatement(b.callExpression(
+                                    b.memberExpression(b.identifier('e'),
+                                        b.identifier('push')), [b.identifier('listener')]))
+                                ]))),
+
+                    b.property('init', b.identifier('removeEventListener'),
+                        b.functionExpression(null, [b.identifier('event'), b.identifier('listener')],
+                            b.blockStatement([
+                                b.variableDeclaration('var', [b.variableDeclarator(b.identifier('e'),
+                                    b.memberExpression(b.identifier('ref'), b.binaryExpression('+', b.literal('_on'), b.identifier('event')), true))]),
+                                b.ifStatement(b.unaryExpression('!', b.identifier('e')),
+                                    b.throwStatement(b.newExpression(b.identifier('Error'), [b.binaryExpression('+', b.literal('Invalid event: '), b.identifier('event'))]))),
+
+                                                b.variableDeclaration('var', [b.variableDeclarator(b.identifier('i'),
+                                    b.callExpression(b.memberExpression(b.identifier('e'),
+                                        b.identifier('indexOf')), [b.identifier('listener')]))]),
+                                                        b.ifStatement(b.binaryExpression('>=', b.identifier('i'), b.literal(0)),
+                                    b.expressionStatement(b.callExpression(
+                                        b.memberExpression(b.identifier('e'),
+                                            b.identifier('splice')), [b.identifier('i'), b.literal(1)])))
+                                                            ])))
+                );
+
+
+            }
             if (transpilingView)
                 refobject.properties.push(
                     b.property('init', b.identifier('Class'), $instance));

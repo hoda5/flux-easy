@@ -70,7 +70,7 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
 ```bash
   flux-easy src/file.jsx bin/file.jsx
 ```
-> Use automation tools like grunt, gulp, webpack...
+> Use automation tools like grunt, gulp, [webpack](https://github.com/thr0w/flux-easy-loader)...
 
 ## using generated code
 
