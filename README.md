@@ -29,8 +29,8 @@ class STORE_NAME extends FluxEasy.Store {
         this.emit('change');
     }
 }
+```
 
-```javascript
 ## defining Views
 
 ```javascript
@@ -81,3 +81,4 @@ var View_Class = view_ref.Class;
 
 React.render(<View_Class />, document.getElementById('app') );
 
+```
