@@ -78,6 +78,7 @@ function transform_ast(inputFileName, source_ast) {
             refobject = b.objectExpression([]),
             $instance = b.memberExpression(clazz.id, b.identifier('__instance')),
             $instanceobj = b.objectExpression([]),
+            $refreshView,
             $requires = b.memberExpression(clazz.id, b.identifier('__requires')),
             $requiresobj = b.objectExpression([]),
             $destroy_body = [],
@@ -196,7 +197,8 @@ function transform_ast(inputFileName, source_ast) {
                     .concat(processed_instance.get)
                     .concat(processed_instance.set)
                     .concat(processed_instance.internals);
-
+                if ($refreshView)
+                    $instanceobj.properties.push($refreshView);
                 body.push(b.expressionStatement(b.assignmentExpression('=', $instance,
                     b.callExpression(
                         b.memberExpression(b.identifier('React'), b.identifier('createClass')), [$instanceobj]
@@ -346,10 +348,13 @@ function transform_ast(inputFileName, source_ast) {
             var visits;
             if (transpilingStore)
                 visits = {
-                    visitThisExpression: visitThisExpressionForStore,
+                    visitCallExpression: visitAddEventListenner,
+                    visitThisExpression: visitThisExpressionForStore
                 };
             if (transpilingView) {
-                visits = {};
+                visits = {
+                    visitCallExpression: visitAddEventListenner
+                };
                 if (method.key.name == 'render')
                     visits.visitJSXAttribute = visitJSXAttribute;
             }
@@ -423,6 +428,7 @@ function transform_ast(inputFileName, source_ast) {
                         throwError(call_node, 'Use an object as event arguments');
 
                     var event_name = call_node.arguments[0].value;
+                    event_name = event_name[0].toUpperCase() + event_name.substr(1);
                     var emit;
 
                     if (has_params)
@@ -562,6 +568,31 @@ b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.
                             valueLinkAux[fnname] = true;
                         }
                         expr.replace(b.identifier(fnname));
+                    }
+                }
+                this.traverse(path);
+            }
+
+            function visitAddEventListenner(path) {
+                var node = path.node;
+                if (n.MemberExpression.check(node.callee) && (/((add)|(remove)).*Listenner/g.test(node.callee.property.name))) {
+                    if (node.arguments.length == 1) {
+                        //                        if (!n.FunctionExpression.check(node.arguments[0]))
+                        //                            throwError(node, "Need a callback for listenner");
+                    } else if (node.arguments.length > 1)
+                        throwError(node, "listenner just need callback as argument");
+                    else if (transpilingStore)
+                        throwError(node, "Store need a callback for listenner");
+                    else {
+                        if (!$refreshView)
+                            $refreshView = b.property('init', b.identifier('refreshView'),
+                                b.functionExpression(null, [], b.blockStatement([b.expressionStatement(
+                                        b.callExpression(b.memberExpression(b.thisExpression(),
+                                            b.identifier('setState')), [b.objectExpression([])]))
+                        ])));
+                        node.arguments.push(b.memberExpression(b.thisExpression(),
+                            b.identifier('refreshView')))
+                        path.replace(node);
                     }
                 }
                 this.traverse(path);

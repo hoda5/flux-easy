@@ -13,7 +13,7 @@ if (process.argv.length == 5) {
 } else if (process.argv.length != 4)
     sintax_error();
 
-new fluxeasy.transform_file(process.argv[2], process.argv[3], options);
+fluxeasy.transform_file(process.argv[2], process.argv[3], options);
 
 function sintax_error() {
     console.error('Sintase: flux-easy input output [--map|mapfile]');

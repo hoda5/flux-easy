@@ -209,8 +209,8 @@ var LoginView = {
                         password: '123'
                     };
 
-                    this.loginStore.addLoggedInListenner(this.refresh);
-                    this.loginStore.addLoggedOutListenner(this.refresh);
+                    this.loginStore.addLoggedInListenner(this.refreshView);
+                    this.loginStore.addLoggedOutListenner(this.refreshView);
                     return state;
                 },
 
@@ -266,6 +266,10 @@ var LoginView = {
                     this.setState({
                         password: newValue
                     });
+                },
+
+                refreshView: function() {
+                    this.setState({});
                 }
             });
         }

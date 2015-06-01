@@ -40,8 +40,8 @@ class LoginView extends FluxEasy.View {
     this.loginStore= LoginStore.createStoreReference();
     this.username='';
     this.password='123';
-    this.loginStore.addLoggedInListenner(this.refresh);
-    this.loginStore.addLoggedOutListenner(this.refresh);
+    this.loginStore.addLoggedInListenner();
+    this.loginStore.addLoggedOutListenner();
   }
 
   render() {
