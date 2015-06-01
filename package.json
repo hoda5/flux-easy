@@ -13,6 +13,7 @@
   },
   "keywords": [
     "flux",
+    "react",
     "es6",
     "esprima-fb",
     "ast-types"
@@ -25,7 +26,7 @@
   "homepage": "https://github.com/thr0w/flux-easy",
   "dependencies": {
     "ast-types": "^0.7.6",
-    "escodegen-jsx": "0.1.0-1.4.2dev",
-    "esprima-fb": "^15001.1.0-dev-harmony-fb"
+    "esprima-fb": "^15001.1.0-dev-harmony-fb",
+    "recast": "^0.10.12"
   }
 }
