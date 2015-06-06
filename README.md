@@ -32,7 +32,7 @@ class STORE_NAME extends FluxEasy.Store {
     action1(p1,p2) { // automatic creation of dispatcher and callbacks for actions
         this.prop1 = p1;
         this.prop2 = p2;
-        this.emit('YourChange'); //write any changes
+        this.emit('YourChange'); //write any name changes
     }
 }
 ```
@@ -45,7 +45,8 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
   constructor(){
     this.store_ref= STORE_NAME.createStoreReference(); // automatic reference to stores/views
     this.prop3=''; // view state
-    this.store_ref.addChangeListenner('YourChange'); // simplification of listenners
+    this.store_ref.addChangeListenner('YourChange'); // simplification of listenners from this.emit('YourChange')
+                                                     // in the store
   }
 
   render() {
