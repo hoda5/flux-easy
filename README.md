@@ -58,7 +58,7 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
                <div>prop2 {prop2}</div>
                <div>prop3 {prop3}</div>
                <input type="text" placeholder="prop3"
-                   valueLink={this.state.prop3} />
+                   valueLink={this.state.prop3} /> //edit value in input update in this.state.prop3 automatic
                    
                <button onClick={this.dispatch_action}>Dispatch action1</button>
             </div>
