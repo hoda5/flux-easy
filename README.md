@@ -2,13 +2,19 @@
 
 [Flux](https://facebook.github.io/flux/) applications have a beautiful architecture but a ugly code. This project propose a transpiler write a better and simple code that generate it. additionally **flux-easy** facilities using of multiple references to Stores/Views.
 
-## enabling **flux-easy**
+## Install **flux-easy**
+
+```bash
+$ sudo npm install flux-easy
+```
+
+## Enabling **flux-easy**
 
 ```javascript
 import FluxEasy from 'flux-easy';  // fake module that define Store and View fake classes
 ```
 
-## defining Stores
+## Defining Stores
 
 ```javascript
 
@@ -26,12 +32,12 @@ class STORE_NAME extends FluxEasy.Store {
     action1(p1,p2) { // automatic creation of dispatcher and callbacks for actions
         this.prop1 = p1;
         this.prop2 = p2;
-        this.emit('change');
+        this.emit('YourChange'); //write any changes
     }
 }
 ```
 
-## defining Views
+## Defining Views
 
 ```javascript
 class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
@@ -39,7 +45,7 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
   constructor(){
     this.store_ref= STORE_NAME.createStoreReference(); // automatic reference to stores/views
     this.prop3=''; // view state
-    this.store_ref.addChangeListenner(this.refresh); // simplification of listenners
+    this.store_ref.addChangeListenner('YourChange'); // simplification of listenners
   }
 
   render() {
@@ -57,22 +63,17 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
             </div>
     );
   }
-
-  refresh(){
-    this.setState({});
-  }
-
 }
 
 ```
-## transpiling 
+## Transpiling 
 
 ```bash
   flux-easy src/file.jsx bin/file.jsx
 ```
 > Use automation tools like grunt, gulp, [webpack](https://github.com/thr0w/flux-easy-loader)...
 
-## using generated code
+## Using generated code
 
 ```javascript
 var dispatcher=new Flux.Dispatcher();
