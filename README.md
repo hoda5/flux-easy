@@ -5,7 +5,7 @@
 ## Install **flux-easy**
 
 ```bash
-$ sudo npm install flux-easy
+$ npm install flux-easy
 ```
 
 ## Enabling **flux-easy**
@@ -73,6 +73,8 @@ class VIEW_NAME extends FluxEasy.View {  // will define a React.Class
   flux-easy src/file.jsx bin/file.jsx
 ```
 > Use automation tools like grunt, gulp, [webpack](https://github.com/thr0w/flux-easy-loader)...
+
+> See sample project at https://github.com/thr0w/flux-easy-loader-test
 
 ## Using generated code
 
