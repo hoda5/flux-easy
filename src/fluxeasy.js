@@ -111,27 +111,45 @@ function transform_ast(inputFileName, source_ast) {
             }
 
             function generateScript(c) {
-                var src = recast.parse(c.children[0].value);
+                for (var j = 0; j < c.children.length; j++) {
+                    var ch = c.children[j];
+                    if (n.Literal.check(ch))
+                        generateState(ch);
+                    else if (n.JSXExpressionContainer.check(ch))
+                        generateMethod(ch);
+                    else
+                        throwError(ch, "Not supported");
+                }
 
-                for (var i = 0; i < src.program.body.length; i++) {
-                    var stmt = src.program.body[i];
-                    if (n.ExpressionStatement.check(stmt) &&
-                        n.AssignmentExpression.check(stmt.expression) &&
-                        n.MemberExpression.check(stmt.expression.left)
-                    ) {
-                        if (n.ThisExpression.check(stmt.expression.left.object)) {
-                            constructorBody.push(stmt);
-                        } else if (n.Identifier.check(stmt.expression.left.object) && stmt.expression.left.object.name == clazz.id.name) {
-                            //propriedades Estaticas
-                        } else
-                            throwError(c, "Too complex");
-                    } else if (n.FunctionDeclaration.check(stmt)) {
-                        //tratar funções
+                function generateMethod(ch) {
+                    if (n.FunctionExpression.check(ch.expression)) {
+                        clazzBody.push(b.methodDefinition('init', ch.expression.id, ch.expression, false));
                     } else
-                        throwError(c, "Not supported");
+                        throwError(ch, "Not supported");
+                }
 
+                function generateState(ch) {
+                    var src = recast.parse(ch.value);
+
+                    for (var i = 0; i < src.program.body.length; i++) {
+                        var stmt = src.program.body[i];
+                        if (n.ExpressionStatement.check(stmt) &&
+                            n.AssignmentExpression.check(stmt.expression) &&
+                            n.MemberExpression.check(stmt.expression.left)
+                        ) {
+                            if (n.ThisExpression.check(stmt.expression.left.object)) {
+                                constructorBody.push(stmt);
+                            } else if (n.Identifier.check(stmt.expression.left.object) && stmt.expression.left.object.name == clazz.id.name) {
+                                //propriedades Estaticas
+                            } else
+                                throwError(c, "Too complex");
+                        } else
+                            throwError(c, "Not supported");
+
+                    }
                 }
             }
+
 
             function generateRender(renderElement) {
                 var fnBody = [];

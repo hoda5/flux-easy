@@ -1,0 +1,33 @@
+<MethodsView>
+    <div onClick={this.tick}>
+        Seconds Elapsed: {this.secondsElapsed}
+    </div>
+    <script>
+        this.secondsElapsed = 0;
+
+
+        {
+            function tick() {
+                this.setState({
+                    secondsElapsed: this.secondsElapsed + 1
+                })
+            }
+
+        }
+
+        {
+            function componentDidMount() {
+                this.interval = setInterval(function () {
+                    this.tick()
+                }.bind(this), 1000);
+            }
+
+        }
+
+        {
+            function componentWillMount() {
+                clearInterval(this.interval);
+            }
+        }
+    </script>
+</MethodsView>
