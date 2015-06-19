@@ -318,19 +318,27 @@ function transform_ast(inputFileName, source_ast) {
                     body.forEach(function (stmt) {
                         if (n.ExpressionStatement.check(stmt) &&
                             n.AssignmentExpression.check(stmt.expression) &&
-                            n.MemberExpression.check(stmt.expression.left) &&
-                            n.ThisExpression.check(stmt.expression.left.object)
+                            n.MemberExpression.check(stmt.expression.left)
                         ) {
-                            var r = stmt.expression.right;
-                            if (n.CallExpression.check(r) && n.MemberExpression.check(r.callee) && /create.*Reference/.test(r.callee.property.name)) {
-                                r.arguments.push(b.identifier('dispatcher'));
-                                $requiresobj.properties.push(b.property('init', stmt.expression.left.property, r));
-                                var ref = b.memberExpression($requires, stmt.expression.left.property);
-                                $destroy_body.push(
-                                    b.expressionStatement(b.callExpression(b.memberExpression(ref, b.identifier(r.callee.property.name.replace('create', 'release'))), [])));
-                                $instanceobj.properties.push(b.property('init', stmt.expression.left.property, ref));
-                            } else
-                                setInitialState(stmt.expression.left.property, null, stmt.expression.right);
+                            if (n.ThisExpression.check(stmt.expression.left.object)) {
+                                var r = stmt.expression.right;
+                                if (n.CallExpression.check(r) && n.MemberExpression.check(r.callee) && /create.*Reference/.test(r.callee.property.name)) {
+                                    r.arguments.push(b.identifier('dispatcher'));
+                                    $requiresobj.properties.push(b.property('init', stmt.expression.left.property, r));
+                                    var ref = b.memberExpression($requires, stmt.expression.left.property);
+                                    $destroy_body.push(
+                                        b.expressionStatement(b.callExpression(b.memberExpression(ref, b.identifier(r.callee.property.name.replace('create', 'release'))), [])));
+                                    $instanceobj.properties.push(b.property('init', stmt.expression.left.property, ref));
+                                } else
+                                    setInitialState(stmt.expression.left.property, null, stmt.expression.right);
+                            } else if (n.Identifier.check(stmt.expression.left.object) && stmt.expression.left.object.name == clazz.id.name) {
+                                var varName = stmt.expression.left.property;
+                                var value = stmt.expression.right;
+                                var p = b.property('init', varName, value);
+                                $instanceobj.properties.push(p);
+                            } else {
+                                throwError(stmt.expression.left.object, "Too complex");
+                            }
                             return;
                         }
                         initialStateFn.body.body.splice(initialStateFn.body.body.length - 1, 0, stmt);
@@ -373,6 +381,10 @@ function transform_ast(inputFileName, source_ast) {
 
                 var p = path.parentPath;
                 var parent_node = p.node;
+                if (!n.MemberExpression.check(parent_node)) {
+                    this.traverse(path);
+                    return;
+                }
                 var l = p;
                 var last_node = parent_node;
                 while (n.MemberExpression.check(parent_node)) {
@@ -384,7 +396,7 @@ function transform_ast(inputFileName, source_ast) {
 
                 check_state_changing();
 
-                if (n.CallExpression.check(parent_node)) {
+                if (n.CallExpression.check(parent_node) && n.MemberExpression.check(last_node) && n.ThisExpression.check(last_node.object)) {
                     if (last_node.property.name == 'emit')
                         processEmit();
                 } else {
@@ -532,8 +544,12 @@ function transform_ast(inputFileName, source_ast) {
                                 valueLinkAux.declarations.push(decl);
                             else {
                                 valueLinkAux.declarations = [decl];
-                                method.value.body.body.unshift(
-                                    b.variableDeclaration('var', valueLinkAux.declarations));
+                                var p = path;
+                                while (!/\wStatement/.test(p.node.type))
+                                    p = p.parentPath;
+                                p.insertBefore(b.variableDeclaration('var', valueLinkAux.declarations))
+//                                method.value.body.body.unshift(
+         //                                    );
                             }
 
                             if (!n.Identifier.check(m2))

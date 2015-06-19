@@ -3,8 +3,13 @@ import FluxEasy from 'flux-easy';
 class LoginStore extends FluxEasy.Store {
 
     constructor() {
+        LoginStore.x = {alguma: 1};
         this.logged_user = null;
         this.checkWindowLocationHash();
+        this.logged_user.trim();
+
+
+
     }
 
     getLoggedUser() {
@@ -19,6 +24,11 @@ class LoginStore extends FluxEasy.Store {
     }
 
     login(name, password) {
+         setTimeout(function(){
+            this.emit("bla");
+            this.logged_user = null;
+
+        }.bind(this), 1);
         if (name!='' && password == '123') {
             this.logged_user = name;
             this.emit('LoggedIn', {
@@ -51,16 +61,17 @@ class LoginView extends FluxEasy.View {
           <button onClick={this.logout}>Logout</button>
           </div>
        );
-    else
-      return (
-      <div>
-          <input type="text" placeholder="Digite o usuário"
-                   valueLink={this.state.username} />
-          <input type="password" placeholder="Digite a senha"
-                  valueLink={this.state.password} />
-          <button onClick={this.login}>Login</button>
-      </div>
-      );
+       else{
+          return (
+          <div>
+              <input type="text" placeholder="Digite o usuário"
+                       valueLink={this.state.username} />
+              <input type="password" placeholder="Digite a senha"
+                      valueLink={this.state.password} />
+              <button onClick={this.login}>Login</button>
+          </div>
+          );
+      }
   }
 
   refresh(){
