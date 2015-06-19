@@ -44,6 +44,24 @@ class LoginStore extends FluxEasy.Store {
     }
 }
 
+<LoginView>
+  <div>
+      <input type="text" placeholder="Digite o usuário"
+               valueLink={this.state.username} />
+      <input type="password" placeholder="Digite a senha"
+              valueLink={this.state.password} />
+      <button onClick={this.login}>Login</button>
+  </div>
+  <script>
+    this.username='';
+    this.password='123';
+    this.loginStore= LoginStore.createStoreReference();
+    this.loginStore.addEventListener('LoggedIn', this);
+    this.loginStore.addEventListener('LoggedOut', this);
+  </script>
+</LoginView>
+
+/*
 class LoginView extends FluxEasy.View {
 
   constructor(){
@@ -64,7 +82,7 @@ class LoginView extends FluxEasy.View {
        else{
           return (
           <div>
-              <input type="text" placeholder="Digite o usuário"
+          <input type="text" placeholder="Digite o usuário"
                        valueLink={this.state.username} />
               <input type="password" placeholder="Digite a senha"
                       valueLink={this.state.password} />
@@ -88,6 +106,7 @@ class LoginView extends FluxEasy.View {
     this.loginStore.logout();
   }
 }
+*/
 
 var dispatcher=new Flux.Dispatcher();
 var LoginViewComponent = LoginView.createViewReference(dispatcher).Class;

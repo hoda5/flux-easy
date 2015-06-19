@@ -65,6 +65,56 @@ function transform_ast(inputFileName, source_ast) {
                 }
             }
             this.traverse(path);
+        },
+        visitJSXElement: function (path) {
+            if (!n.ExpressionStatement.check(path.parentPath.node))
+                return false;
+            var node = path.node;
+            var clazzName = node.openingElement.name;
+            clazzName.type = "Identifier";
+
+            var clazzBody = [];
+
+            generate();
+
+            var clazz = b.classDeclaration(clazzName, b.classBody(clazzBody), b.memberExpression(b.identifier("FluxEasy"), b.identifier("View")));
+            path.replace(clazz);
+            this.traverse(path);
+
+            function generate() {
+                var renderElement = null;
+
+                for (var i = 0; i < node.children.length; i++) {
+                    var c = node.children[i];
+                    if (n.Literal.check(c)) {
+                        if (c.value.trim() != "")
+                            throwError(c, "Invalid content");
+                    } else if (n.JSXElement.check(c)) {
+                        if (c.openingElement.name.name == "script")
+                            generateScript(c);
+                        else {
+                            if (renderElement)
+                                throwError(c, "Adjacent JSX elements must be wrapped in an enclosing tag");
+                            renderElement = c;
+                        }
+                    } else throwError(c, "Invalid content");
+                }
+
+                if (!renderElement)
+                    throwError(node, "Has nothing to renderize");
+                generateRender(renderElement);
+            }
+
+            function generateScript(c) {
+
+            }
+
+            function generateRender(renderElement) {
+                var fnBody = [];
+                fnBody.push(b.returnStatement(renderElement));
+                var fn = b.functionExpression(null, [], b.blockStatement(fnBody));
+                clazzBody.push(b.methodDefinition('init', b.identifier("render"), fn, false));
+            }
         }
     });
     return source_ast;
@@ -548,8 +598,8 @@ function transform_ast(inputFileName, source_ast) {
                                 while (!/\wStatement/.test(p.node.type))
                                     p = p.parentPath;
                                 p.insertBefore(b.variableDeclaration('var', valueLinkAux.declarations))
-//                                method.value.body.body.unshift(
-         //                                    );
+                                    //                                method.value.body.body.unshift(
+                                    //                                    );
                             }
 
                             if (!n.Identifier.check(m2))
