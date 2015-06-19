@@ -74,6 +74,9 @@ function transform_ast(inputFileName, source_ast) {
             clazzName.type = "Identifier";
 
             var clazzBody = [];
+            var constructorBody = [];
+
+            clazzBody.push(b.methodDefinition('init', b.identifier("constructor"), b.functionExpression(null, [], b.blockStatement(constructorBody)), false));
 
             generate();
 
@@ -108,7 +111,26 @@ function transform_ast(inputFileName, source_ast) {
             }
 
             function generateScript(c) {
+                var src = recast.parse(c.children[0].value);
 
+                for (var i = 0; i < src.program.body.length; i++) {
+                    var stmt = src.program.body[i];
+                    if (n.ExpressionStatement.check(stmt) &&
+                        n.AssignmentExpression.check(stmt.expression) &&
+                        n.MemberExpression.check(stmt.expression.left)
+                    ) {
+                        if (n.ThisExpression.check(stmt.expression.left.object)) {
+                            constructorBody.push(stmt);
+                        } else if (n.Identifier.check(stmt.expression.left.object) && stmt.expression.left.object.name == clazz.id.name) {
+                            //propriedades Estaticas
+                        } else
+                            throwError(c, "Too complex");
+                    } else if (n.FunctionDeclaration.check(stmt)) {
+                        //tratar funções
+                    } else
+                        throwError(c, "Not supported");
+
+                }
             }
 
             function generateRender(renderElement) {
@@ -117,7 +139,7 @@ function transform_ast(inputFileName, source_ast) {
                 var fn = b.functionExpression(null, [], b.blockStatement(fnBody));
                 clazzBody.push(b.methodDefinition('init', b.identifier("render"), fn, false));
             }
-        },
+        }
     });
     return source_ast;
 
@@ -561,8 +583,46 @@ function transform_ast(inputFileName, source_ast) {
             function visitJSXAttribute(path) {
                 var node = path.node;
                 if (n.JSXIdentifier.check(node.name) &&
-                    n.JSXExpressionContainer.check(node.value) &&
-                    node.name.name == 'valueLink') {
+                    n.JSXExpressionContainer.check(node.value)
+                ) {
+                    if (node.name.name == 'valueLink')
+                        generateValueLink();
+                    else if (node.name.name == 'if')
+                        generateIf();
+                    else if (node.name.name == 'repeat')
+                        generateRepeat();
+
+                }
+
+                function generateIf() {
+                    var test = node.value.expression;
+
+
+                    var element = path.parentPath;
+
+                    while (n.JSXOpeningElement.check(element.node))
+                        element = element.parentPath;
+
+                    var condition = b.conditionalExpression(test, element.node, b.identifier("null"));
+                    element.replace(b.jsxExpressionContainer(condition));
+                    path.replace();
+                }
+
+                function generateRepeat() {
+                    var arr = node.value.expression;
+
+
+                    var element = path.parentPath;
+
+                    while (n.JSXOpeningElement.check(element.node))
+                        element = element.parentPath;
+                    var fn = b.functionExpression(null, [b.identifier("item")], b.blockStatement([b.returnStatement(element.node)]));
+                    var map = b.callExpression(b.memberExpression(arr, b.identifier("map")), [fn]);
+                    element.replace(b.jsxExpressionContainer(map));
+                    path.replace();
+                }
+
+                function generateValueLink() {
                     var fnname = [];
                     var v = node.value.expression;
                     var m1, m2;
