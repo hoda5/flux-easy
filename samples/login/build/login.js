@@ -173,19 +173,72 @@ var LoginStore = {
     }
 };
 
-class LoginView extends FluxEasy.View {
-    render() {
-        return (
-            <div>
-                <input type="text" placeholder="Digite o usuário"
-                         valueLink={this.state.username} />
-                <input type="password" placeholder="Digite a senha"
-                        valueLink={this.state.password} />
-                <button onClick={this.login}>Login</button>
-            </div>
-        );
+var LoginView = {
+    createViewReference: function createViewReference(dispatcher) {
+        if (!LoginView.__instance)
+            createViewInstance();
+
+        var ref = {
+            releaseViewReference: function releaseViewReference() {
+                if (LoginView.__dependents.length == 1 && LoginView.__dependents[0] == ref)
+                    destroyViewInstance();
+                else {
+                    var i = LoginView.__dependents.indexOf(ref);
+                    LoginView.__dependents.splice(i, 1);
+                }
+            },
+
+            Class: LoginView.__instance
+        };
+
+        LoginView.__dependents.push(ref);
+        return ref;
+
+        function createViewInstance() {
+            LoginView.__dependents = [];
+
+            LoginView.__instance = React.createClass({
+                render: function() {
+                    var valueLink_username = {
+                            value: this.state.username,
+                            requestChange: this.valueLink_username_change
+                        },
+                        valueLink_password = {
+                            value: this.state.password,
+                            requestChange: this.valueLink_password_change
+                        };
+
+                    return (
+                        <div>
+                            <input if={1 == 1} type="text" placeholder="Digite o usuário"
+                                     valueLink={valueLink_username} />
+                            <input type="password" placeholder="Digite a senha"
+                                    valueLink={valueLink_password} />
+                            <button onClick={this.login}>Login</button>
+                        </div>
+                    );
+                },
+
+                valueLink_username_change: function(newValue) {
+                    this.setState({
+                        username: newValue
+                    });
+                },
+
+                valueLink_password_change: function(newValue) {
+                    this.setState({
+                        password: newValue
+                    });
+                }
+            });
+        }
+
+        function destroyViewInstance() {
+            delete LoginView.__instance;
+            delete LoginView.__dependents;
+        }
     }
-};
+};;
 
 /*
 class LoginView extends FluxEasy.View {

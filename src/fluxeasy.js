@@ -77,8 +77,10 @@ function transform_ast(inputFileName, source_ast) {
 
             generate();
 
-            var clazz = b.classDeclaration(clazzName, b.classBody(clazzBody), b.memberExpression(b.identifier("FluxEasy"), b.identifier("View")));
-            path.replace(clazz);
+            var superClazz = b.memberExpression(b.identifier("FluxEasy"), b.identifier("View"));
+            var clazz = b.classDeclaration(clazzName, b.classBody(clazzBody), superClazz);
+            path.replace(transpile(superClazz.property.name, clazz));
+
             this.traverse(path);
 
             function generate() {
@@ -115,7 +117,7 @@ function transform_ast(inputFileName, source_ast) {
                 var fn = b.functionExpression(null, [], b.blockStatement(fnBody));
                 clazzBody.push(b.methodDefinition('init', b.identifier("render"), fn, false));
             }
-        }
+        },
     });
     return source_ast;
 

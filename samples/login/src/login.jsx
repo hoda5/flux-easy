@@ -46,7 +46,7 @@ class LoginStore extends FluxEasy.Store {
 
 <LoginView>
   <div>
-      <input type="text" placeholder="Digite o usuário"
+      <input if={1 == 1} type="text" placeholder="Digite o usuário"
                valueLink={this.state.username} />
       <input type="password" placeholder="Digite a senha"
               valueLink={this.state.password} />
