@@ -1,0 +1,24 @@
+<IfView>
+    <div>
+        <span if={this.condicaoA}> Condição A Satistfeita</span> <!--Teria que ter transformado em this.state.condidicaoA-->
+        <span if={this.funcaoCondicaoB()}> Condição B Satistfeita</span>
+        <span if={this.condicaoA== this.condicaoC}> Condição C Satistfeita</span>  <!--Teria que ter transformado em this.state.condidicaoA e this.state.condidicaoC-->
+        <span if={this.funcaoCondicaoB() == this.funcaoCondicaoD()}> Condição D Satistfeita</span>
+    </div>
+    <script>
+        {
+            function constructor() {
+                this.condicaoA = true;
+                this.condicaoC = true;
+            }
+        } {
+            function funcaoCondicaoB() {
+                return false;
+            }
+        } {
+            function funcaoCondicaoD() {
+                return true;
+            }
+        }
+    </script>
+</IfView>

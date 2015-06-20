@@ -1,0 +1,33 @@
+<PropsView>
+    <div onClick={this.tick}>
+        Seconds Elapsed: {this.secondsElapsed}
+    </div>
+    <script>
+        {
+            function constructor() {
+                MethodsView.string = "B";
+                MethodsView.number = 1;
+                MethodsView.boolean = true;
+                MethodsView.obj = {
+                    a: "A"
+                };
+                MethodsView.objComplex = {
+                    a: {
+                        number: {
+                            number1: 1,
+                            number2: 2,
+                            number3: 3
+                        },
+                        letters: {
+                            letterA: "A",
+                            letterB: "B",
+                            letterC: "C"
+                        }
+                    }
+                };
+
+            }
+
+        }
+    </script>
+</PropsView>

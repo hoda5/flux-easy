@@ -23,32 +23,32 @@ var MethodsView = {
             MethodsView.__dependents = [];
 
             MethodsView.__instance = React.createClass({
+                string: "B",
+                number: 1,
+                boolean: true,
+
                 obj: {
                     a: "A"
                 },
 
+                objComplex: {
+                    a: {
+                        number: {
+                            number1: 1,
+                            number2: 2,
+                            number3: 3
+                        },
+                        letters: {
+                            letterA: "A",
+                            letterB: "B",
+                            letterC: "C"
+                        }
+                    }
+                },
+
                 getInitialState: function getInitialState() {
-                    var state = {
-                        secondsElapsed: 0
-                    };
-
+                    var state = {};
                     return state;
-                },
-
-                tick: function tick() {
-                    this.setState({
-                        secondsElapsed: this.secondsElapsed + 1
-                    })
-                },
-
-                componentDidMount: function componentDidMount() {
-                    this.interval = setInterval(function () {
-                        this.tick()
-                    }.bind(this), 1000);
-                },
-
-                componentWillMount: function componentWillMount() {
-                    clearInterval(this.interval);
                 },
 
                 render: function() {
