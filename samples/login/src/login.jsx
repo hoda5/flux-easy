@@ -3,13 +3,8 @@ import FluxEasy from 'flux-easy';
 class LoginStore extends FluxEasy.Store {
 
     constructor() {
-        LoginStore.x = {alguma: 1};
         this.logged_user = null;
         this.checkWindowLocationHash();
-        this.logged_user.trim();
-
-
-
     }
 
     getLoggedUser() {
@@ -46,9 +41,9 @@ class LoginStore extends FluxEasy.Store {
 
 <LoginView>
   <div>
-      <input if={1 == 1} type="text" placeholder="Digite o usuário"
+      <input type="text" placeholder="Digite o usuário"
                valueLink={this.state.username} />
-               <input repeat={x} type="password" placeholder="Digite a senha"
+      <input type="password" placeholder="Digite a senha"
               valueLink={this.state.password} />
       <button onClick={this.login}>Login</button>
   </div>

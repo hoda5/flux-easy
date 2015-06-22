@@ -1,15 +1,18 @@
-<MethodsView>
+<MethodsView mode="class">
     <div onClick={this.tick}>
-        Seconds Elapsed: {this.secondsElapsed}
+        Seconds Elapsed: {this.state.secondsElapsed}
     </div>
     <script>
-        this.secondsElapsed = 0;
-
+        {
+            function constructor() {
+                this.state.secondsElapsed = 0;
+            }
+        }
 
         {
             function tick() {
                 this.setState({
-                    secondsElapsed: this.secondsElapsed + 1
+                    secondsElapsed: this.state.secondsElapsed + 1
                 })
             }
 
@@ -17,11 +20,8 @@
 
         {
             function componentDidMount() {
-                this.interval = setInterval(function () {
-                    this.tick()
-                }.bind(this), 1000);
+                this.interval = setInterval(this.tick, 1000);
             }
-
         }
 
         {

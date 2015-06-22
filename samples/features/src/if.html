@@ -1,0 +1,23 @@
+<IfSample mode="class">
+    <div onClick={this.exchange}>
+        <div if={this.state.x}>
+            TRUE
+        </div>
+        <div if={!this.state.x}>
+            false
+        </div>
+    </div>
+    <script>
+        {
+            function constructor() {
+                this.state.x = false;
+            }
+        } {
+            function exchange() {
+                this.setState({
+                    x: !x
+                });
+            }
+        }
+    </script>
+</IfSample>

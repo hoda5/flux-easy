@@ -1,29 +1,12 @@
-<ItensView>
-    <div>
-        <ul>
-            <li repeat={this.itens}>{item}</li>
-        </ul>
-    </div>
+<Itens mode="class">
+    <ul>
+        <li repeat={this.itens}>{item}</li>
+    </ul>
     <script>
-        this.itens = ["neto", "fernando"];
-
         {
-            function x() {
-                var y = 1;
-                while (y < 10)
-                    y++;
-                return y;
-            }
-
-        }
-
-        {
-            function y() {
-                var y = 1;
-                while (y < 10)
-                    y++;
-                return y;
+            function constructor() {
+                this.state.itens = ["item1", "item2"];
             }
         }
     </script>
-</ItensView>
+</Itens>

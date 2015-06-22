@@ -1,0 +1,19 @@
+<StateSample mode="class">
+    <label>
+        Name:
+        <input type="text" value={this.state.name} onChange={this.changed} />
+    </label>
+    <script>
+        {
+            function constructor() {
+                this.state.name = "Mary";
+            }
+        } {
+            function changed(e) {
+                this.setState({
+                    name: e.target.value
+                });
+            }
+        }
+    </script>
+</StateSample>
