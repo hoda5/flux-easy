@@ -1,28 +1,28 @@
-var MethodsView = {
+var PropsView = {
     createViewReference: function createViewReference(dispatcher) {
-        if (!MethodsView.__instance)
+        if (!PropsView.__instance)
             createViewInstance();
 
         var ref = {
             releaseViewReference: function releaseViewReference() {
-                if (MethodsView.__dependents.length == 1 && MethodsView.__dependents[0] == ref)
+                if (PropsView.__dependents.length == 1 && PropsView.__dependents[0] == ref)
                     destroyViewInstance();
                 else {
-                    var i = MethodsView.__dependents.indexOf(ref);
-                    MethodsView.__dependents.splice(i, 1);
+                    var i = PropsView.__dependents.indexOf(ref);
+                    PropsView.__dependents.splice(i, 1);
                 }
             },
 
-            Class: MethodsView.__instance
+            Class: PropsView.__instance
         };
 
-        MethodsView.__dependents.push(ref);
+        PropsView.__dependents.push(ref);
         return ref;
 
         function createViewInstance() {
-            MethodsView.__dependents = [];
+            PropsView.__dependents = [];
 
-            MethodsView.__instance = React.createClass({
+            PropsView.__instance = React.createClass({
                 string: "B",
                 number: 1,
                 boolean: true,
@@ -54,7 +54,7 @@ var MethodsView = {
                 render: function() {
                     return (
                         <div onClick={this.tick}>
-                            Seconds Elapsed: {this.secondsElapsed}
+                            Test props
                         </div>
                     );
                 }
@@ -62,8 +62,8 @@ var MethodsView = {
         }
 
         function destroyViewInstance() {
-            delete MethodsView.__instance;
-            delete MethodsView.__dependents;
+            delete PropsView.__instance;
+            delete PropsView.__dependents;
         }
     }
 };;

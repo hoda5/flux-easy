@@ -70,9 +70,15 @@ function transform_ast(inputFileName, source_ast) {
             if (!n.ExpressionStatement.check(path.parentPath.node))
                 return false;
             var node = path.node;
+            var mode = "view";
+            node.openingElement.attributes.forEach(function (attr) {
+                if (attr.name.name == 'mode')
+                    mode = attr.value.value;
+            });
             var clazzName = node.openingElement.name;
             clazzName.type = "Identifier";
 
+            var replace_stmts = [];
             var clazzBody = [];
             var constructorBody = [];
 
@@ -82,7 +88,14 @@ function transform_ast(inputFileName, source_ast) {
 
             var superClazz = b.memberExpression(b.identifier("FluxEasy"), b.identifier("View"));
             var clazz = b.classDeclaration(clazzName, b.classBody(clazzBody), superClazz);
-            path.replace(transpile(superClazz.property.name, clazz));
+            var transpiled = transpile(superClazz.property.name, clazz, mode);
+            //replace_stmts.push(transpiled);
+            //path.replace.apply(path, replace_stmts);
+            path.parentPath.insertBefore(replace_stmts[0]);
+            //            replace_stmts.forEach(function (r) {
+            //
+            //            });
+            path.replace(transpiled);
 
             this.traverse(path);
 
@@ -111,6 +124,16 @@ function transform_ast(inputFileName, source_ast) {
             }
 
             function generateScript(c) {
+
+                var _id, _src;
+                c.openingElement.attributes.forEach(function (attr) {
+                    if (attr.name.name == 'id')
+                        _id = attr.value;
+                    else if (attr.name.name == 'src')
+                        _src = attr.value;
+                });
+                if (_id && _src)
+                    replace_stmts.push(b.variableDeclaration('var', [b.variableDeclarator(b.identifier(_id.value), b.callExpression(b.identifier('require'), [_src]))]));
                 for (var j = 0; j < c.children.length; j++) {
                     var ch = c.children[j];
                     if (n.Literal.check(ch))
@@ -161,7 +184,7 @@ function transform_ast(inputFileName, source_ast) {
     });
     return source_ast;
 
-    function transpile(clazzName, clazz) {
+    function transpile(clazzName, clazz, mode) {
 
         var transpilingStore = clazzName == 'Store',
             transpilingView = clazzName == 'View';
@@ -170,7 +193,7 @@ function transform_ast(inputFileName, source_ast) {
             refobject = b.objectExpression([]),
             $instance = b.memberExpression(clazz.id, b.identifier('__instance')),
             $instanceobj = b.objectExpression([]),
-            $refreshView,
+            $refreshView, $reactclass,
             $requires = b.memberExpression(clazz.id, b.identifier('__requires')),
             $requiresobj = b.objectExpression([]),
             $destroy_body = [],
@@ -198,10 +221,12 @@ function transform_ast(inputFileName, source_ast) {
             if (event_without_param)
                 class_body.unshift(event_without_param);
         }
-
-        return b.variableDeclaration('var', [b.variableDeclarator(clazz.id, b.objectExpression([
+        var r = b.objectExpression([
             b.property('init', b.identifier('create' + clazzName + 'Reference'), fnCreateReference())
-          ]))]);
+          ]);
+        if (mode == 'class')
+            r = $reactclass;
+        return b.variableDeclaration('var', [b.variableDeclarator(clazz.id, r)]);
 
         function fnCreateInstance() {
             var body = [b.expressionStatement(b.assignmentExpression('=', $dependents, b.arrayExpression([])))];
@@ -291,10 +316,11 @@ function transform_ast(inputFileName, source_ast) {
                     .concat(processed_instance.internals);
                 if ($refreshView)
                     $instanceobj.properties.push($refreshView);
+                $reactclass = b.callExpression(
+                    b.memberExpression(b.identifier('React'), b.identifier('createClass')), [$instanceobj]
+                );
                 body.push(b.expressionStatement(b.assignmentExpression('=', $instance,
-                    b.callExpression(
-                        b.memberExpression(b.identifier('React'), b.identifier('createClass')), [$instanceobj]
-                    ))));
+                    $reactclass)));
             }
         }
 
@@ -412,7 +438,7 @@ function transform_ast(inputFileName, source_ast) {
                             n.AssignmentExpression.check(stmt.expression) &&
                             n.MemberExpression.check(stmt.expression.left)
                         ) {
-                            if (n.ThisExpression.check(stmt.expression.left.object)) {
+                            if (n.ThisExpression.check(stmt.expression.left.object.object)) {
                                 var r = stmt.expression.right;
                                 if (n.CallExpression.check(r) && n.MemberExpression.check(r.callee) && /create.*Reference/.test(r.callee.property.name)) {
                                     r.arguments.push(b.identifier('dispatcher'));

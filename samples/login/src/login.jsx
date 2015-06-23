@@ -3,22 +3,17 @@ import FluxEasy from 'flux-easy';
 class LoginStore extends FluxEasy.Store {
 
     constructor() {
-        LoginStore.x = {alguma: 1};
-        this.logged_user = null;
+        this.state.logged_user = null;
         this.checkWindowLocationHash();
-        this.logged_user.trim();
-
-
-
     }
 
     getLoggedUser() {
-        return this.logged_user;
+        return this.state.logged_user;
     }
 
     checkWindowLocationHash() {
         if (window.location.hash) {
-            this.logged_user = window.location.hash;
+            this.state.logged_user = window.location.hash;
             this.emit('LoggedIn');
         }
     }
@@ -26,11 +21,11 @@ class LoginStore extends FluxEasy.Store {
     login(name, password) {
          setTimeout(function(){
             this.emit("bla");
-            this.logged_user = null;
+            this.state.logged_user = null;
 
         }.bind(this), 1);
         if (name!='' && password == '123') {
-            this.logged_user = name;
+            this.state.logged_user = name;
             this.emit('LoggedIn', {
                 name: name
             })
@@ -39,25 +34,29 @@ class LoginStore extends FluxEasy.Store {
     }
 
     logout() {
-        this.logged_user = null;
+        this.state.logged_user = null;
         this.emit('LoggedOut')
     }
 }
 
 <LoginView>
   <div>
-      <input if={1 == 1} type="text" placeholder="Digite o usuário"
+      <input type="text" placeholder="Digite o usuário"
                valueLink={this.state.username} />
-               <input repeat={x} type="password" placeholder="Digite a senha"
+      <input type="password" placeholder="Digite a senha"
               valueLink={this.state.password} />
       <button onClick={this.login}>Login</button>
   </div>
   <script>
-    this.username='';
-    this.password='123';
-    this.loginStore= LoginStore.createStoreReference();
-    this.loginStore.addEventListener('LoggedIn', this);
-    this.loginStore.addEventListener('LoggedOut', this);
+    {
+    function constructor(){
+      this.state.username='';
+      this.state.password='123';
+      LoginView.loginStore= LoginStore.createStoreReference();
+      LoginView.loginStore.addEventListener('LoggedIn', this);
+      LoginView.loginStore.addEventListener('LoggedOut', this);
+      }
+    }
   </script>
 </LoginView>
 

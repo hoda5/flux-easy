@@ -1,24 +1,23 @@
-<IfView>
-    <div>
-        <span if={this.condicaoA}> Condição A Satistfeita</span> <!--Teria que ter transformado em this.state.condidicaoA-->
-        <span if={this.funcaoCondicaoB()}> Condição B Satistfeita</span>
-        <span if={this.condicaoA== this.condicaoC}> Condição C Satistfeita</span>  <!--Teria que ter transformado em this.state.condidicaoA e this.state.condidicaoC-->
-        <span if={this.funcaoCondicaoB() == this.funcaoCondicaoD()}> Condição D Satistfeita</span>
+<IfSample mode="class">
+    <div onClick={this.exchange}>
+        <div if={this.state.x}>
+            TRUE
+        </div>
+        <div if={!this.state.x}>
+            false
+        </div>
     </div>
     <script>
         {
             function constructor() {
-                this.condicaoA = true;
-                this.condicaoC = true;
+                this.state.x = false;
             }
         } {
-            function funcaoCondicaoB() {
-                return false;
-            }
-        } {
-            function funcaoCondicaoD() {
-                return true;
+            function exchange() {
+                this.setState({
+                    x: !x
+                });
             }
         }
     </script>
-</IfView>
+</IfSample>

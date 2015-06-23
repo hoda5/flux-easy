@@ -1,0 +1,13 @@
+<ValueLinkSample mode="class">
+    <label>
+        Name:
+        <input type="text" valueLink={this.state.name} />
+    </label>
+    <script>
+        {
+            function constructor() {
+                this.state.name = "Mary";
+            }
+        }
+    </script>
+</ValueLinkSample>
