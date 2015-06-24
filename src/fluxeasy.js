@@ -701,7 +701,7 @@ function transform_ast(inputFileName, source_ast) {
                             else {
                                 valueLinkAux.declarations = [decl];
                                 var p = path;
-                                while (!/\wStatement/.test(p.node.type))
+                                while (!n.Statement.check(p.node))
                                     p = p.parentPath;
                                 p.insertBefore(b.variableDeclaration('var', valueLinkAux.declarations))
                                     //                                method.value.body.body.unshift(
@@ -710,12 +710,17 @@ function transform_ast(inputFileName, source_ast) {
 
                             if (!n.Identifier.check(m2))
                                 throwError(m2, "TODO: valueLink with complex objects");
+                            var setBody=[
+
+                                  b.expressionStatement(b.assignmentExpression('=', expr.node, b.identifier('newValue'))),
+
+                                  b.expressionStatement(b.callExpression(
+                                    b.memberExpression(b.thisExpression(), b.identifier('setState')),
+                                    [    b.objectExpression([])]
+                                  ))
+                                ];
                             processed_instance.internals.push(b.property('init', b.identifier(fnname + '_change'),
-                                b.functionExpression(null, [b.identifier('newValue')], b.blockStatement([
-b.expressionStatement(b.callExpression(b.memberExpression(b.thisExpression(), b.identifier('setState')), [b.objectExpression([
-                                           b.property('init', m2, b.identifier('newValue'))
-                                       ])]))
-                                            ]))
+                                b.functionExpression(null, [b.identifier('newValue')], b.blockStatement(setBody))
                             ));
                             valueLinkAux[fnname] = true;
                         }
