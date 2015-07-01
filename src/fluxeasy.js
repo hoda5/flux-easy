@@ -474,12 +474,12 @@ function transform_ast(inputFileName, source_ast) {
             var visits;
             if (transpilingStore)
                 visits = {
-                    visitCallExpression: visitAddEventListener,
+                    visitCallExpression: visitCallExpression,
                     visitThisExpression: visitThisExpressionForStore
                 };
             if (transpilingView) {
                 visits = {
-                    visitCallExpression: visitAddEventListener
+                    visitCallExpression: visitCallExpression
                 };
                 if (method.key.name == 'render')
                     visits.visitJSXAttribute = visitJSXAttribute;
@@ -494,6 +494,7 @@ function transform_ast(inputFileName, source_ast) {
             //                b.identifier('emit')), [b.literal('change')])));
             //        }
             return state_was_changed;
+
 
             function visitThisExpressionForStore(path) {
 
@@ -514,13 +515,8 @@ function transform_ast(inputFileName, source_ast) {
 
                 check_state_changing();
 
-                if (n.CallExpression.check(parent_node) && n.MemberExpression.check(last_node) && n.ThisExpression.check(last_node.object)) {
-                    if (last_node.property.name == 'emit')
-                        processEmit();
-                } else {
-                    if (transpilingStore)
-                        path.replace($state);
-                }
+                if (transpilingStore)
+                    path.replace($state);
 
                 this.traverse(path);
 
@@ -533,96 +529,8 @@ function transform_ast(inputFileName, source_ast) {
                         state_was_changed = true;
                 }
 
-                function processEmit() {
-                    emit_something = true;
-                    var call_path = p;
-                    var call_node = parent_node;
-                    if (!call_path.parentPath)
-                        throwError(call_node, 'Invalid emit');
-                    var stmt_node = call_path.parentPath.node;
-                    if (!(n.ExpressionStatement.check(stmt_node) &&
-                            (call_node.arguments.length > 0) &&
-                            n.Literal.check(call_node.arguments[0]) &&
-                            typeof call_node.arguments[0].value === 'string'))
-                        throwError(call_node, 'Invalid emit');
-
-                    var has_params;
-
-                    if (call_node.arguments.length == 1)
-                        has_params = false;
-                    else if (call_node.arguments.length <= 2) {
-                        if (!n.ObjectExpression.check(call_node.arguments[1]))
-                            throwError(call_node, 'Use an object as event arguments');
-                        has_params = true;
-                    } else
-                        throwError(call_node, 'Use an object as event arguments');
-
-                    var event_name = call_node.arguments[0].value;
-                    event_name = event_name[0].toUpperCase() + event_name.substr(1);
-                    var emit;
-
-                    if (has_params)
-                        emit = b.expressionStatement(b.callExpression(
-                            b.memberExpression($dependents,
-                                b.identifier('forEach')), [
-                            b.functionExpression(null, [b.identifier('$ref')], b.blockStatement([
-                                b.expressionStatement(b.callExpression(
-                                        b.memberExpression(
-                                            b.memberExpression(b.identifier('$ref'),
-                                                b.identifier('_on' + event_name)),
-                                            b.identifier('forEach')), [
-                                            b.functionExpression(null, [b.identifier('$event')], b.blockStatement([
-                                b.expressionStatement(b.callExpression(
-                                                    $emitter, [b.identifier('$event'), call_node.arguments[1]
-                                ]))
-                                        ]))
-                            ]))
-                       ]))]));
-                    else
-                        emit = b.expressionStatement(b.callExpression(
-                            b.memberExpression($dependents,
-                                b.identifier('forEach')), [
-                            b.functionExpression(null, [b.identifier('r')], b.blockStatement([
-                                b.expressionStatement(b.callExpression(
-                                        b.memberExpression(
-                                            b.memberExpression(b.identifier('r'),
-                                                b.identifier('_on' + event_name)),
-                                            b.identifier('forEach')), [$emitter
-                                        ]
-                                    ))
-                            ]))
-                          ]));
-
-                    var def = true;
-                    for (var i = 0; i < refobject.properties.length; i++)
-                        if (refobject.properties[i].key.name == '_on' + event_name) {
-                            def = false;
-                            break;
-                        }
-                    if (def) {
-                        var listener = b.identifier('listener');
-                        // TODO: define typeAlias for events
-                        //                        if (state_type) {
-                        //                            if (has_params)
-                        //                            ;
-                        //                            else
-                        //                            if (!event_without_param)
-                        //                                event_without_param = b.typeAlias(b.identifier('$EventWithoutParams'), null,
-                        //                                    b.declareFunction(b.functionTypeAnnotation([], {
-                        //                                        "type": "VoidTypeAnnotation"
-                        //                                    }, null, null)));
-                        //                            listener.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_without_param.id, null));;
-                        //                        }
-                        refobject.properties.push(
-                            b.property('init', b.identifier('_on' + event_name), b.arrayExpression([]))
-                        );
-
-                    }
-                    call_path.replace(emit);
-
-                }
-
             }
+
 
             function visitJSXAttribute(path) {
                 var node = path.node;
@@ -710,14 +618,13 @@ function transform_ast(inputFileName, source_ast) {
 
                             if (!n.Identifier.check(m2))
                                 throwError(m2, "TODO: valueLink with complex objects");
-                            var setBody=[
+                            var setBody = [
 
                                   b.expressionStatement(b.assignmentExpression('=', expr.node, b.identifier('newValue'))),
 
                                   b.expressionStatement(b.callExpression(
-                                    b.memberExpression(b.thisExpression(), b.identifier('setState')),
-                                    [    b.objectExpression([])]
-                                  ))
+                                    b.memberExpression(b.thisExpression(), b.identifier('setState')), [b.objectExpression([])]
+                                ))
                                 ];
                             processed_instance.internals.push(b.property('init', b.identifier(fnname + '_change'),
                                 b.functionExpression(null, [b.identifier('newValue')], b.blockStatement(setBody))
@@ -730,9 +637,17 @@ function transform_ast(inputFileName, source_ast) {
                 this.traverse(path);
             }
 
-            function visitAddEventListener(path) {
+            function visitCallExpression(path) {
                 var node = path.node;
-                if (n.MemberExpression.check(node.callee) && (node.callee.property.name == 'addEventListener')) {
+                if (n.MemberExpression.check(node.callee)) {
+                    if (node.callee.property.name == 'addEventListener')
+                        processAddEventListener();
+                    else if (node.callee.property.name == 'emit')
+                        processEmit(node.callee.object);
+
+                }
+
+                function processAddEventListener() {
                     if (node.arguments.length == 2) {
                         if (n.ThisExpression.check(node.arguments[1])) {
                             if (transpilingStore)
@@ -742,7 +657,7 @@ function transform_ast(inputFileName, source_ast) {
                                     b.functionExpression(null, [], b.blockStatement([b.expressionStatement(
                                             b.callExpression(b.memberExpression(b.thisExpression(),
                                                 b.identifier('setState')), [b.objectExpression([])]))
-                            ])));
+                                                   ])));
                             node.arguments[1] = b.memberExpression(b.thisExpression(),
                                 b.identifier('refreshView'));
                             path.replace(node);
@@ -752,6 +667,100 @@ function transform_ast(inputFileName, source_ast) {
                     else
                         throwError(node, "use addEventListener(event, function)");
                 }
+
+                function processEmit(obj) {
+                    emit_something = true;
+                    var call_path = path;
+                    var call_node = node;
+                    if (!call_path.parentPath)
+                        throwError(call_node, 'Invalid emit');
+                    var stmt_node = call_path.parentPath.node;
+                    if (!(n.ExpressionStatement.check(stmt_node) &&
+                            (call_node.arguments.length > 0) &&
+                            n.Literal.check(call_node.arguments[0]) &&
+                            typeof call_node.arguments[0].value === 'string'))
+                        throwError(call_node, 'Invalid emit');
+
+                    var has_params;
+
+                    if (call_node.arguments.length == 1)
+                        has_params = false;
+                    else if (call_node.arguments.length <= 2) {
+                        if (!n.ObjectExpression.check(call_node.arguments[1]))
+                            throwError(call_node, 'Use an object as event arguments');
+                        has_params = true;
+                    } else
+                        throwError(call_node, 'Use an object as event arguments');
+
+                    var event_name = call_node.arguments[0].value;
+                    event_name = event_name[0].toUpperCase() + event_name.substr(1);
+                    var emit;
+                    var obj_deps = n.ThisExpression.check(obj) ? $dependents :
+                        b.memberExpression(obj, b.identifier('__dependents'));
+                    var obj_emitter = n.ThisExpression.check(obj) ? $emitter :
+                        b.memberExpression(obj, b.identifier('__emitter'));
+
+                    if (has_params)
+                        emit = b.expressionStatement(b.callExpression(
+                            b.memberExpression(obj_deps,
+                                b.identifier('forEach')), [
+                            b.functionExpression(null, [b.identifier('$ref')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                        b.memberExpression(
+                                            b.memberExpression(b.identifier('$ref'),
+                                                b.identifier('_on' + event_name)),
+                                            b.identifier('forEach')), [
+                                            b.functionExpression(null, [b.identifier('$event')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                                    obj_emitter, [b.identifier('$event'), call_node.arguments[1]
+                                ]))
+                                        ]))
+                            ]))
+                       ]))]));
+                    else
+                        emit = b.expressionStatement(b.callExpression(
+                            b.memberExpression(obj_deps,
+                                b.identifier('forEach')), [
+                            b.functionExpression(null, [b.identifier('r')], b.blockStatement([
+                                b.expressionStatement(b.callExpression(
+                                        b.memberExpression(
+                                            b.memberExpression(b.identifier('r'),
+                                                b.identifier('_on' + event_name)),
+                                            b.identifier('forEach')), [obj_emitter
+                                        ]
+                                    ))
+                            ]))
+                          ]));
+
+                    var def = true;
+                    for (var i = 0; i < refobject.properties.length; i++)
+                        if (refobject.properties[i].key.name == '_on' + event_name) {
+                            def = false;
+                            break;
+                        }
+                    if (def) {
+                        var listener = b.identifier('listener');
+                        // TODO: define typeAlias for events
+                        //                        if (state_type) {
+                        //                            if (has_params)
+                        //                            ;
+                        //                            else
+                        //                            if (!event_without_param)
+                        //                                event_without_param = b.typeAlias(b.identifier('$EventWithoutParams'), null,
+                        //                                    b.declareFunction(b.functionTypeAnnotation([], {
+                        //                                        "type": "VoidTypeAnnotation"
+                        //                                    }, null, null)));
+                        //                            listener.typeAnnotation = b.typeAnnotation(b.genericTypeAnnotation(event_without_param.id, null));;
+                        //                        }
+                        refobject.properties.push(
+                            b.property('init', b.identifier('_on' + event_name), b.arrayExpression([]))
+                        );
+
+                    }
+                    call_path.replace(emit);
+
+                }
+
                 this.traverse(path);
             }
         }
