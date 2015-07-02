@@ -486,6 +486,8 @@ function transform_ast(inputFileName, source_ast) {
             }
             recast.visit(method.value.body.body, visits);
 
+            if (method.kind == "get" || method.kind == "set")
+                return false;
             if (transpilingStore && state_was_changed && !emit_something && method.key.name != 'constructor')
                 throwError(method, "method %0 changed state then it must emit some event", method.key.name);
 
@@ -515,9 +517,13 @@ function transform_ast(inputFileName, source_ast) {
 
                 check_state_changing();
 
-                if (transpilingStore)
-                    path.replace($state);
-
+                if (transpilingStore &&
+                    n.MemberExpression.check(path.parentPath.node)) {
+                    if (path.parentPath.node.property.name == 'state')
+                        path.parentPath.replace($state);
+                    else if (!n.CallExpression.check(parent_node))
+                        throwError(parent_node, "use state");
+                }
                 this.traverse(path);
 
                 function check_state_changing() {

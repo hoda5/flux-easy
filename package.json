@@ -1,6 +1,6 @@
 {
     "name": "flux-easy",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "Transpiler for use flux with simplicity",
     "bin": "bin/fluxeasy-cli.js",
     "main": "src/fluxeasy.js",

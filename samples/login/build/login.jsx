@@ -5,7 +5,6 @@ var LoginStore = {
 
         var ref = {
             _onLoggedIn: [],
-            _onBla: [],
             _onLoginError: [],
             _onLoggedOut: [],
 
@@ -85,12 +84,12 @@ var LoginStore = {
                 },
 
                 getLoggedUser: function() {
-                    return LoginStore.__state.state.logged_user;
+                    return LoginStore.__state.logged_user;
                 },
 
                 checkWindowLocationHash: function() {
                     if (window.location.hash) {
-                        LoginStore.__state.state.logged_user = window.location.hash;
+                        LoginStore.__state.logged_user = window.location.hash;
                         LoginStore.__dependents.forEach(function(r) {
                             r._onLoggedIn.forEach(LoginStore.__emitter);
                         });;
@@ -98,15 +97,12 @@ var LoginStore = {
                 },
 
                 login: function(name, password) {
-                     setTimeout(function(){
-                        LoginStore.__dependents.forEach(function(r) {
-                            r._onBla.forEach(LoginStore.__emitter);
-                        });;
-                        LoginStore.__state.state.logged_user = null;
+                    setTimeout(function () {
+                        LoginStore.__state.logged_user = null;
 
                     }.bind(this), 1);
-                    if (name!='' && password == '123') {
-                        LoginStore.__state.state.logged_user = name;
+                    if (name != '' && password == '123') {
+                        LoginStore.__state.logged_user = name;
                         LoginStore.__dependents.forEach(function($ref) {
                             $ref._onLoggedIn.forEach(function($event) {
                                 LoginStore.__emitter($event, {
@@ -121,9 +117,12 @@ var LoginStore = {
                 },
 
                 logout: function() {
-                    LoginStore.__state.state.logged_user = null;
-                    LoginStore.__dependents.forEach(function(r) {
-                        r._onLoggedOut.forEach(LoginStore.__emitter);
+                    var last_user=LoginStore.__state.logged_user;
+                    LoginStore.__state.logged_user = null;
+                    LoginStore.__dependents.forEach(function($ref) {
+                        $ref._onLoggedOut.forEach(function($event) {
+                            LoginStore.__emitter($event, {lastuser: last_user});
+                        });
                     });;
                 }
             };
@@ -216,26 +215,31 @@ var LoginView = {
                         };
 
                     return (
-                        <div>
-                            <input type="text" placeholder="Digite o usuário"
-                                     valueLink={valueLink_username} />
-                            <input type="password" placeholder="Digite a senha"
-                                    valueLink={valueLink_password} />
-                            <button onClick={this.login}>Login</button>
-                        </div>
+                        < div >
+                        < input type = "text"
+                    placeholder = "Digite o usuário"
+                    valueLink = {
+                        valueLink_username
+                    }
+                    /> < input type = "password"
+                    placeholder = "Digite a senha"
+                    valueLink = {
+                        valueLink_password
+                    }
+                    /> < button onClick = {
+                    this.login
+                    } > Login < /button> < /div >
                     );
                 },
 
                 valueLink_username_change: function(newValue) {
-                    this.setState({
-                        username: newValue
-                    });
+                    this.state.username = newValue;
+                    this.setState({});
                 },
 
                 valueLink_password_change: function(newValue) {
-                    this.setState({
-                        password: newValue
-                    });
+                    this.state.password = newValue;
+                    this.setState({});
                 },
 
                 refreshView: function() {
@@ -251,56 +255,9 @@ var LoginView = {
     }
 };;
 
-/*
-class LoginView extends FluxEasy.View {
-
-  constructor(){
-    this.username='';
-    this.password='123';
-    this.loginStore= LoginStore.createStoreReference();
-    this.loginStore.addEventListener('LoggedIn', this);
-    this.loginStore.addEventListener('LoggedOut', this);
-  }
-
-  render() {
-    var store=this.loginStore.getState();
-    if (store.logged_user)
-      return (<div>Hello {store.logged_user}
-          <button onClick={this.logout}>Logout</button>
-          </div>
-       );
-       else{
-          return (
-          <div>
-          <input type="text" placeholder="Digite o usuário"
-                       valueLink={this.state.username} />
-              <input type="password" placeholder="Digite a senha"
-                      valueLink={this.state.password} />
-              <button onClick={this.login}>Login</button>
-          </div>
-          );
-      }
-  }
-
-  refresh(){
-    this.setState({});
-  }
-
-  login(){
-    var user = this.state.username;
-    var pass = this.state.password;
-    this.loginStore.login(user, pass);
-  }
-
-  logout(){
-    this.loginStore.logout();
-  }
-}
-*/
-
-var dispatcher=new Flux.Dispatcher();
+var dispatcher = new Flux.Dispatcher();
 var LoginViewComponent = LoginView.createViewReference(dispatcher).Class;
 
-var l= <LoginViewComponent />;
-var a=document.getElementById('app');
-React.render( l,a );
+var l = < LoginViewComponent / > ;
+var a = document.getElementById('app');
+React.render(l, a);
